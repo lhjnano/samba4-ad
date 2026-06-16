@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>그룹 관리 — AD Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--bg-root:#0d1117;--bg-card:#161b22;--bg-sidebar:#1c2128;--bg-input:#0d1117;--bg-hover:#21262d;--bg-active:#1f3244;--border:#30363d;--border-subtle:#21262d;--text-primary:#e6edf3;--text-secondary:#8b949e;--text-muted:#484f58;--accent-blue:#3b82f6;--accent-green:#10b981;--accent-yellow:#f59e0b;--accent-red:#ef4444;--accent-purple:#7c3aed;--radius-sm:6px;--radius-md:8px;--radius-lg:12px}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Inter',-apple-system,sans-serif;font-size:14px;line-height:1.5;color:var(--text-primary);background:var(--bg-root)}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.app{display:grid;grid-template-areas:"topbar topbar" "sidebar main";grid-template-rows:56px 1fr;grid-template-columns:220px 1fr;height:100vh}
+.topbar{grid-area:topbar;display:flex;align-items:center;gap:16px;padding:0 16px;background:var(--bg-card);border-bottom:1px solid var(--border);position:relative;z-index:100}
+.topbar-logo{display:flex;align-items:center;gap:8px}
+.logo-icon{width:28px;height:28px;background:var(--accent-blue);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center}
+.logo-icon svg{width:16px;height:16px;color:#fff}
+.logo-text{font-size:13px;font-weight:700;letter-spacing:-0.02em}
+.domain-pill{display:flex;align-items:center;gap:6px;padding:4px 10px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:20px}
+.domain-dot{width:7px;height:7px;border-radius:50%;background:var(--accent-green);box-shadow:0 0 6px var(--accent-green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.domain-name{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--accent-green)}
+.search-wrap{flex:1;display:flex;align-items:center;max-width:380px;margin:0 auto;position:relative}
+.search-wrap svg{position:absolute;left:10px;width:14px;height:14px;color:var(--text-muted)}
+.search-input{width:100%;padding:6px 10px 6px 32px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:13px;outline:none}
+.search-input:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(59,130,246,0.15)}
+.topbar-right{display:flex;align-items:center;gap:12px;margin-left:auto}
+.notif-btn{position:relative;width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:var(--radius-sm);color:var(--text-secondary);cursor:pointer}
+.notif-btn svg{width:18px;height:18px}
+.notif-badge{position:absolute;top:2px;right:2px;width:16px;height:16px;background:var(--accent-red);border-radius:8px;font-size:10px;font-weight:600;color:#fff;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg-card)}
+.profile{display:flex;align-items:center;gap:8px;cursor:pointer}
+.profile-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--accent-blue),#1d4ed8);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff}
+.profile-name{font-size:13px;font-weight:500}
+.sidebar{grid-area:sidebar;background:var(--bg-sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.sidebar-section{padding:16px 0 4px}
+.sidebar-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);padding:0 16px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 16px;font-size:13px;color:var(--text-secondary);cursor:pointer;position:relative;transition:.15s;text-decoration:none}
+.nav-item svg{width:16px;height:16px;flex-shrink:0}
+.nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.nav-item.active{background:var(--bg-active);color:var(--accent-blue);font-weight:500}
+.nav-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:18px;background:var(--accent-blue);border-radius:0 3px 3px 0}
+.sidebar-spacer{flex:1}
+.main{grid-area:main;overflow-y:auto;padding:20px 24px}
+.breadcrumb{font-size:12px;color:var(--text-muted);margin-bottom:4px}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.page-title{font-size:18px;font-weight:700;letter-spacing:-0.03em}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;transition:.15s;border:none;text-decoration:none}
+.btn svg{width:14px;height:14px}
+.btn-primary{background:var(--accent-blue);color:#fff}
+.btn-primary:hover{background:#2563eb}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text-secondary)}
+.btn-outline:hover{background:var(--bg-hover);color:var(--text-primary)}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+.stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;position:relative;overflow:hidden}
+.stat-stripe{position:absolute;top:0;right:0;width:3px;height:100%}
+.stat-label{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-secondary);margin-bottom:10px}
+.stat-value{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;letter-spacing:-0.02em;line-height:1}
+.stat-sub{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--text-muted)}
+.filter-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.filter-search{flex:1;min-width:200px;max-width:320px;position:relative}
+.filter-search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--text-muted)}
+.filter-search input{width:100%;padding:7px 10px 7px 32px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:13px;outline:none}
+.filter-search input:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(59,130,246,0.15)}
+.custom-select{position:relative}
+.custom-select select{appearance:none;padding:7px 32px 7px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:13px;cursor:pointer;outline:none;font-family:inherit}
+.custom-select::after{content:'';position:absolute;right:12px;top:50%;transform:translateY(-50%);width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid var(--text-secondary);pointer-events:none}
+.toggle-group{display:flex;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+.toggle-btn{padding:6px 14px;font-size:12.5px;color:var(--text-secondary);cursor:pointer;transition:.15s;border:none;background:transparent;font-family:inherit}
+.toggle-btn.active{background:var(--accent-blue);color:#fff}
+.toggle-btn:hover:not(.active){background:var(--bg-hover);color:var(--text-primary)}
+.table-wrap{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+table{width:100%;border-collapse:collapse}
+thead th{text-align:left;padding:10px 14px;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-secondary);background:var(--bg-sidebar);border-bottom:1px solid var(--border);white-space:nowrap}
+thead th:first-child{width:36px}
+tbody tr{border-bottom:1px solid var(--border-subtle);transition:.15s;cursor:pointer}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--bg-hover)}
+td{padding:10px 14px;font-size:13px;white-space:nowrap}
+.group-name{font-weight:500;color:var(--text-primary)}
+.group-scope-tag{font-family:'JetBrains Mono',monospace;font-size:11px;padding:2px 8px;border-radius:4px}
+.tag-security{background:rgba(59,130,246,0.12);color:var(--accent-blue)}
+.tag-distribution{background:rgba(124,58,237,0.12);color:var(--accent-purple)}
+.scope-domain{background:rgba(16,185,129,0.12);color:var(--accent-green)}
+.scope-global{background:rgba(245,158,11,0.12);color:var(--accent-yellow)}
+.scope-universal{background:rgba(139,148,158,0.12);color:var(--text-secondary)}
+.member-count{font-family:'JetBrains Mono',monospace;color:var(--text-secondary)}
+.type-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px}
+.builtin-badge{background:rgba(245,158,11,0.12);color:var(--accent-yellow)}
+.custom-badge{background:rgba(16,185,129,0.12);color:var(--accent-green)}
+.row-actions{display:flex;gap:4px}
+.action-btn{padding:4px 8px;font-size:11.5px;border:1px solid var(--border);border-radius:var(--radius-sm);background:transparent;color:var(--text-secondary);cursor:pointer;transition:.15s}
+.action-btn:hover{background:var(--bg-hover);color:var(--text-primary)}
+.pagination{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--border-subtle)}
+.page-info{font-size:12px;color:var(--text-muted)}
+.page-numbers{display:flex;align-items:center;gap:4px}
+.page-btn{min-width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-family:'JetBrains Mono',monospace;border:1px solid var(--border);border-radius:var(--radius-sm);background:transparent;color:var(--text-secondary);cursor:pointer;transition:.15s}
+.page-btn:hover{background:var(--bg-hover)}
+.page-btn.active{background:var(--accent-blue);border-color:var(--accent-blue);color:#fff}
+.page-btn:disabled{opacity:.4;cursor:default}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);opacity:0;pointer-events:none;transition:.25s;z-index:200}
+.overlay.open{opacity:1;pointer-events:auto}
+.detail-panel{position:fixed;top:0;right:0;width:440px;height:100vh;background:var(--bg-card);border-left:1px solid var(--border);box-shadow:-20px 0 60px rgba(0,0,0,0.4);transform:translateX(100%);transition:.28s cubic-bezier(.4,0,.2,1);z-index:300;display:flex;flex-direction:column;overflow:hidden}
+.detail-panel.open{transform:translateX(0)}
+.panel-header{padding:20px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:14px}
+.panel-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent-blue),#1d4ed8);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;color:#fff;flex-shrink:0;border:2px solid var(--accent-blue);box-shadow:0 0 0 3px rgba(59,130,246,0.15)}
+.panel-info{flex:1}
+.panel-title{font-size:16px;font-weight:700;letter-spacing:-0.02em}
+.panel-sub{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent-blue);margin-top:2px}
+.panel-desc{font-size:12px;color:var(--text-muted);margin-top:4px}
+.panel-close{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:var(--radius-sm);background:transparent;color:var(--text-secondary);cursor:pointer;transition:.15s;flex-shrink:0}
+.panel-close:hover{background:var(--bg-hover);color:var(--text-primary)}
+.panel-close svg{width:14px;height:14px}
+.panel-tabs{display:flex;border-bottom:1px solid var(--border);padding:0 20px}
+.panel-tab{padding:10px 14px;font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;position:relative;transition:.15s;border:none;background:transparent;font-family:inherit}
+.panel-tab:hover{color:var(--text-primary)}
+.panel-tab.active{color:var(--accent-blue)}
+.panel-tab.active::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:var(--accent-blue)}
+.panel-body{flex:1;overflow-y:auto;padding:20px}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.info-row{display:grid;grid-template-columns:120px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid var(--border-subtle)}
+.info-row:last-child{border-bottom:none}
+.info-label{font-size:12px;color:var(--text-muted)}
+.info-value{font-size:13px;color:var(--text-primary)}
+.info-value.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
+.member-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;font-size:12px;margin:0 6px 6px 0}
+.member-chip-dot{width:6px;height:6px;border-radius:50%;background:var(--accent-blue)}
+.member-chip-name{color:var(--text-primary)}
+.member-chip-type{font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace}
+.section-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:12px;margin-top:20px}
+.section-label:first-child{margin-top:0}
+.member-list-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border-subtle)}
+.member-list-item:last-child{border-bottom:none}
+.member-avatar-sm{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--accent-purple),#5b21b6);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;flex-shrink:0}
+.member-info-sm{flex:1}
+.member-name-sm{font-size:13px;font-weight:500}
+.member-detail-sm{font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace}
+.panel-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px}
+.panel-footer .btn{flex:1;justify-content:center}
+@media(max-width:1200px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:900px){.app{grid-template-columns:56px 1fr}.sidebar-label,.nav-item span{display:none}.nav-item{justify-content:center}.domain-pill .domain-name,.profile-name{display:none}.detail-panel{width:100%}}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="topbar">
+<div class="topbar-logo"><div class="logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><span class="logo-text">AD Manager</span></div>
+<div class="domain-pill"><span class="domain-dot"></span><span class="domain-name">TEST.LOCAL</span></div>
+<div class="search-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input class="search-input" placeholder="사용자, 그룹, 디바이스 검색..."></div>
+<div class="topbar-right"><button class="notif-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="notif-badge">3</span></button><div class="profile"><div class="profile-avatar">AD</div><span class="profile-name">관리자</span></div></div>
+</div>
+<div class="sidebar">
+<div class="sidebar-section"><div class="sidebar-label">메인</div>
+<a class="nav-item" href="01-dashboard.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>대시보드</span></a>
+<a class="nav-item" href="02-users.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>사용자 관리</span></a>
+<a class="nav-item active" href="03-groups.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>그룹 관리</span></a>
+<a class="nav-item" href="04-ou.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg><span>OU 관리</span></a>
+<a class="nav-item" href="05-domain-join.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg><span>도메인 조인 현황</span></a>
+</div>
+<div class="sidebar-section"><div class="sidebar-label">관리</div>
+<a class="nav-item" href="06-gpo.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span>정책(GPO)</span></a>
+</div>
+<div class="sidebar-spacer"></div>
+<div class="sidebar-section"><a class="nav-item" href="07-settings.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>설정</span></a></div>
+</div>
+<div class="main">
+<div class="breadcrumb">홈 › 그룹 관리</div>
+<div class="page-header">
+<h1 class="page-title">그룹 관리</h1>
+<div style="display:flex;gap:8px">
+<button class="btn btn-outline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>일괄 가져오기</button>
+<button class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>그룹 추가</button>
+</div>
+</div>
+<div class="stats-row">
+<div class="stat-card"><div class="stat-stripe" style="background:var(--accent-blue)"></div><div class="stat-label">전체 그룹</div><div class="stat-value">287</div><div class="stat-sub">총 그룹 수</div></div>
+<div class="stat-card"><div class="stat-stripe" style="background:var(--accent-green)"></div><div class="stat-label">보안 그룹</div><div class="stat-value">241</div><div class="stat-sub">보안 그룹 (83.9%)</div></div>
+<div class="stat-card"><div class="stat-stripe" style="background:var(--accent-purple)"></div><div class="stat-label">분배 그룹</div><div class="stat-value">46</div><div class="stat-sub">분배 목록 (16.1%)</div></div>
+<div class="stat-card"><div class="stat-stripe" style="background:var(--accent-yellow)"></div><div class="stat-label">중첩 그룹</div><div class="stat-value">38</div><div class="stat-sub">하위 그룹 포함</div></div>
+</div>
+<div class="filter-bar">
+<div class="filter-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input placeholder="그룹 이름 검색..."></div>
+<div class="custom-select"><select><option>전체 유형</option><option>보안 그룹</option><option>분배 그룹</option></select></div>
+<div class="custom-select"><select><option>전체 범위</option><option>도메인 로컬</option><option>글로벌</option><option>유니버설</option></select></div>
+<div class="toggle-group"><button class="toggle-btn active">전체</button><button class="toggle-btn">기본 제공</button><button class="toggle-btn">사용자 지정</button></div>
+</div>
+<div class="table-wrap">
+<table>
+<thead><tr><th><input type="checkbox"></th><th>그룹 이름</th><th>유형</th><th>범위</th><th>구성원</th><th>설명</th><th>관리자</th><th>액션</th></tr></thead>
+<tbody id="groupTableBody"></tbody>
+</table>
+<div class="pagination">
+<span class="page-info">총 287개 중 1–8 표시</span>
+<div class="page-numbers">
+<button class="page-btn" disabled>‹</button>
+<button class="page-btn active">1</button><button class="page-btn">2</button><button class="page-btn">3</button><span style="color:var(--text-muted);padding:0 4px">…</span><button class="page-btn">36</button>
+<button class="page-btn">›</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="overlay" id="overlay"></div>
+<div class="detail-panel" id="detailPanel">
+<div class="panel-header">
+<div class="panel-avatar" id="panelAvatar">DG</div>
+<div class="panel-info">
+<div class="panel-title" id="panelTitle">Domain Admins</div>
+<div class="panel-sub" id="panelSub">CN=Domain Admins,CN=Users,DC=TEST,DC=LOCAL</div>
+<div class="panel-desc" id="panelDesc">도메인 관리자 그룹</div>
+</div>
+<button class="panel-close" id="panelClose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+</div>
+<div class="panel-tabs">
+<button class="panel-tab active" data-tab="info">기본정보</button>
+<button class="panel-tab" data-tab="members">구성원</button>
+<button class="panel-tab" data-tab="nested">중첩 그룹</button>
+</div>
+<div class="panel-body">
+<div class="tab-content active" id="tab-info">
+<div class="info-row"><span class="info-label">그룹 이름</span><span class="info-value" id="i-name">Domain Admins</span></div>
+<div class="info-row"><span class="info-label">유형</span><span class="info-value"><span class="type-badge builtin-badge">보안</span></span></div>
+<div class="info-row"><span class="info-label">범위</span><span class="info-value"><span class="group-scope-tag scope-global">글로벌</span></span></div>
+<div class="info-row"><span class="info-label">설명</span><span class="info-value">도메인의 관리자 그룹</span></div>
+<div class="info-row"><span class="info-label">구성원 수</span><span class="info-value mono">5</span></div>
+<div class="info-row"><span class="info-label">관리자</span><span class="info-value">Administrator</span></div>
+<div class="info-row"><span class="info-label">생성일</span><span class="info-value mono">2024-01-15 09:30:00</span></div>
+<div class="info-row"><span class="info-label">수정일</span><span class="info-value mono">2026-06-10 14:22:31</span></div>
+<div class="info-row"><span class="info-label">SID</span><span class="info-value mono" style="font-size:11px">S-1-5-21-2849275214-3824443864-1046199320-512</span></div>
+</div>
+<div class="tab-content" id="tab-members">
+<div class="section-label">직접 구성원 (5)</div>
+<div class="member-list-item"><div class="member-avatar-sm">AD</div><div class="member-info-sm"><div class="member-name-sm">Administrator</div><div class="member-detail-sm">CN=Administrator,CN=Users</div></div></div>
+<div class="member-list-item"><div class="member-avatar-sm" style="background:linear-gradient(135deg,#10b981,#047857)">김</div><div class="member-info-sm"><div class="member-name-sm">김민준</div><div class="member-detail-sm">CN=김민준,OU=IT인프라팀</div></div></div>
+<div class="member-list-item"><div class="member-avatar-sm" style="background:linear-gradient(135deg,#f59e0b,#b45309)">이</div><div class="member-info-sm"><div class="member-name-sm">이서연</div><div class="member-detail-sm">CN=이서연,OU=IT인프라팀</div></div></div>
+<div class="member-list-item"><div class="member-avatar-sm" style="background:linear-gradient(135deg,#7c3aed,#5b21b6)">박</div><div class="member-info-sm"><div class="member-name-sm">박지호</div><div class="member-detail-sm">CN=박지호,OU=IT인프라팀</div></div></div>
+<div class="member-list-item"><div class="member-avatar-sm" style="background:linear-gradient(135deg,#ef4444,#b91c1c)">최</div><div class="member-info-sm"><div class="member-name-sm">최유나</div><div class="member-detail-sm">CN=최유나,OU=IT인프라팀</div></div></div>
+</div>
+<div class="tab-content" id="tab-nested">
+<div class="section-label">중첩 그룹 (2)</div>
+<div class="member-chip"><span class="member-chip-dot"></span><span class="member-chip-name">서버관리자</span><span class="member-chip-type">security</span></div>
+<div class="member-chip"><span class="member-chip-dot" style="background:var(--accent-purple)"></span><span class="member-chip-name">Enterprise Admins</span><span class="member-chip-type">security</span></div>
+<div class="section-label">하위 그룹 경로</div>
+<div class="info-row"><span class="info-label">서버관리자</span><span class="info-value mono" style="font-size:11px">CN=서버관리자,OU=Groups,DC=TEST,DC=LOCAL</span></div>
+<div class="info-row"><span class="info-label">Enterprise Admins</span><span class="info-value mono" style="font-size:11px">CN=Enterprise Admins,CN=Users,DC=TEST,DC=LOCAL</span></div>
+</div>
+</div>
+<div class="panel-footer">
+<button class="btn btn-outline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>편집</button>
+<button class="btn btn-outline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>구성원 추가</button>
+<button class="btn btn-outline" style="color:var(--accent-red);border-color:rgba(239,68,68,0.3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>삭제</button>
+</div>
+</div>
+<script>
+const groups=[
+{name:'Domain Admins',type:'security',scope:'global',members:5,desc:'도메인 관리자',mgr:'Administrator',builtin:true},
+{name:'Domain Users',type:'security',scope:'global',members:12847,desc:'모든 도메인 사용자',mgr:'Administrator',builtin:true},
+{name:'개발팀',type:'security',scope:'global',members:3245,desc:'개발 부서 그룹',mgr:'김민준',builtin:false},
+{name:'서버관리자',type:'security',scope:'global',members:12,desc:'Linux 서버 sudo 권한',mgr:'Administrator',builtin:false},
+{name:'Enterprise Admins',type:'security',scope:'universal',members:3,desc:'엔터프라이즈 관리자',mgr:'Administrator',builtin:true},
+{name:'마케팅팀',type:'security',scope:'global',members:2108,desc:'마케팅 부서 그룹',mgr:'박지호',builtin:false},
+{name:'파일공유_쓰기',type:'security',scope:'domain',members:456,desc:'파일 공유 쓰기 권한',mgr:'이서연',builtin:false},
+{name:'VPN Users',type:'security',scope:'global',members:892,desc:'VPN 접속 권한',mgr:'Administrator',builtin:false}
+];
+const tbody=document.getElementById('groupTableBody');
+groups.forEach((g,i)=>{
+const tr=document.createElement('tr');tr.dataset.idx=i;
+const typeTag=g.type==='security'?'<span class="group-scope-tag tag-security">보안</span>':'<span class="group-scope-tag tag-distribution">분배</span>';
+const scopeTag={domain:'scope-domain',global:'scope-global',universal:'scope-universal'}[g.scope];
+const scopeLabel={domain:'도메인 로컬',global:'글로벌',universal:'유니버설'}[g.scope];
+const badge=g.builtin?'<span class="type-badge builtin-badge">기본 제공</span>':'<span class="type-badge custom-badge">사용자 지정</span>';
+tr.innerHTML=`<td><input type="checkbox"></td><td><div class="group-name">${g.name}</div></td><td>${typeTag}${badge?'<br>'+badge:''}</td><td><span class="group-scope-tag ${scopeTag}">${scopeLabel}</span></td><td><span class="member-count">${g.members.toLocaleString()}</span></td><td style="color:var(--text-secondary);max-width:200px;overflow:hidden;text-overflow:ellipsis">${g.desc}</td><td style="color:var(--text-secondary)">${g.mgr}</td><td><div class="row-actions"><button class="action-btn" onclick="event.stopPropagation();openPanel(${i})">편집</button></div></td>`;
+tr.addEventListener('click',()=>openPanel(i));
+tbody.appendChild(tr);
+});
+function openPanel(idx){
+const g=groups[idx];
+document.getElementById('panelAvatar').textContent=g.name.substring(0,2).toUpperCase();
+document.getElementById('panelTitle').textContent=g.name;
+document.getElementById('panelSub').textContent='CN='+g.name+',CN=Users,DC=TEST,DC=LOCAL';
+document.getElementById('panelDesc').textContent=g.desc;
+document.getElementById('i-name').textContent=g.name;
+document.getElementById('overlay').classList.add('open');
+document.getElementById('detailPanel').classList.add('open');
+}
+document.getElementById('overlay').addEventListener('click',closePanel);
+document.getElementById('panelClose').addEventListener('click',closePanel);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel()});
+function closePanel(){document.getElementById('overlay').classList.remove('open');document.getElementById('detailPanel').classList.remove('open')}
+document.querySelectorAll('.panel-tab').forEach(tab=>{tab.addEventListener('click',()=>{document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));tab.classList.add('active');document.getElementById('tab-'+tab.dataset.tab).classList.add('active')})});
+document.querySelectorAll('.toggle-btn').forEach(b=>{b.addEventListener('click',()=>{document.querySelectorAll('.toggle-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active')})});
+</script>
+</body>
+</html>

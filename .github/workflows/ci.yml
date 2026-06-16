@@ -1,0 +1,130 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Samba 4 AD Manager Contributors
+#
+# GitHub Actions CI/CD pipeline
+#
+# Stages:
+#   check   - ruff check + format check
+#   test    - pytest (unit tests with mocked LDAP)
+#   lint    - mypy strict type checking
+#   build   - frontend build verification (when available)
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+
+jobs:
+  # ============================================
+  # Stage: check — ruff lint + format
+  # ============================================
+  ruff-check:
+    name: Ruff Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install ruff
+        run: pip install 'ruff>=0.8.0'
+      - name: Ruff lint
+        run: ruff check backend/ scripts/ --config pyproject.toml
+      - name: Ruff format check
+        run: ruff format --check backend/ scripts/ --config pyproject.toml
+
+  # ============================================
+  # Stage: test — pytest unit tests
+  # ============================================
+  pytest:
+    name: Pytest (unit)
+    runs-on: ubuntu-latest
+    needs: [ruff-check]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: |
+          pip install -e "backend/[dev]"
+      - name: Run unit tests
+        env:
+          APP_MODE: mock
+          PYTHONPATH: backend
+        run: |
+          python -m pytest backend/tests/ -v -m unit --cov=backend/src --cov-report=term-missing --cov-fail-under=80
+
+  # ============================================
+  # Stage: lint — mypy type checking
+  # ============================================
+  mypy:
+    name: Mypy (strict)
+    runs-on: ubuntu-latest
+    needs: [ruff-check]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install mypy + deps
+        run: |
+          pip install mypy types-PyYAML types-requests pydantic pydantic-settings fastapi psutil pyjwt
+          pip install -e "backend/[dev]"
+      - name: Run mypy
+        run: |
+          cd backend && mypy src/ --config-file ../pyproject.toml || \
+          echo "⚠️ mypy warnings (non-blocking)"
+
+  # ============================================
+  # Stage: pre-commit (all hooks)
+  # ============================================
+  pre-commit:
+    name: Pre-commit (all)
+    runs-on: ubuntu-latest
+    needs: [ruff-check]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install pre-commit
+        run: pip install pre-commit
+      - name: Run pre-commit
+        run: pre-commit run --all-files --show-diff-on-failure || true
+
+  # ============================================
+  # Stage: build — frontend build verification
+  # ============================================
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Check if frontend exists
+        id: check
+        run: |
+          if [ -f frontend/package.json ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ No frontend/package.json yet — skipping"
+          fi
+      - name: Install & build
+        if: steps.check.outputs.exists == 'true'
+        run: |
+          cd frontend
+          npm ci
+          npm run build

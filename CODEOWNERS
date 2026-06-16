@@ -1,0 +1,47 @@
+# CODEOWNERS
+#
+# This file defines code ownership rules for GitHub.
+# When a path is changed, the listed owners are automatically added as reviewers.
+# Format: <path> <@username1> <@username2>
+#
+# ⚠️ Replace @username below with actual GitHub usernames/team names.
+
+# ========== Default (entire codebase) ==========
+*                           @project-lead @tech-lead
+
+# ========== Governance & Docs (org-level) ==========
+/GOVERNANCE.md              @project-lead @tech-lead
+/CONTRIBUTING.md            @tech-lead
+/SECURITY.md                @security-officer @tech-lead
+/DESIGN-INTEGRATION.md      @tech-lead @design-lead
+/INCIDENT-RESPONSE.md       @tech-lead @security-officer
+/DEPLOYMENT.md              @tech-lead @devops-lead
+/CODEOWNERS                 @project-lead @tech-lead
+/README.md                  @project-lead @tech-lead
+
+# ========== Backend (FastAPI + ldap3) ==========
+/backend/                           @tech-lead @backend-maintainer
+/backend/src/api/                   @tech-lead @backend-maintainer
+/backend/src/api/auth.py            @tech-lead @security-officer
+/backend/src/services/ldap*         @tech-lead @backend-maintainer
+/backend/src/models/                @backend-maintainer
+/backend/tests/                     @backend-maintainer
+
+# ========== Frontend (React + Vite) ==========
+/frontend/                          @frontend-lead @frontend-maintainer
+/frontend/src/pages/                @frontend-lead @frontend-maintainer
+/frontend/src/api/                  @frontend-lead @backend-maintainer
+/frontend/src/components/           @frontend-maintainer
+
+# ========== Design Previews ==========
+/previews/                          @design-lead @frontend-lead
+/docs/design-brief.md               @design-lead
+
+# ========== Infrastructure ==========
+/.github/                           @devops-lead @tech-lead
+/scripts/                           @devops-lead @backend-maintainer
+/Makefile                           @tech-lead
+/pyproject.toml                     @tech-lead
+
+# ========== ADR (Architecture Decision Records) ==========
+/docs/adr/                          @tech-lead

@@ -1,0 +1,80 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Samba 4 AD Manager Contributors
+
+# ============================================
+# Python
+# ============================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# ============================================
+# Node.js / Frontend
+# ============================================
+node_modules/
+.next/
+.nuxt/
+.output/
+frontend/dist/
+frontend/build/
+*.tsbuildinfo
+.eslintcache
+.cache/
+
+# ============================================
+# IDE
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ============================================
+# Secrets (NEVER commit)
+# ============================================
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+credentials*
+secrets.yml
+.secrets.baseline
+
+# ============================================
+# Coverage & test artifacts
+# ============================================
+coverage/
+htmlcov/
+.coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.lcov
+
+# ============================================
+# Build artifacts
+# ============================================
+backend/static/
+*.db
+*.sqlite3
+
+# ============================================
+# OS
+# ============================================
+Thumbs.db

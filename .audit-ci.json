@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json.schemastore.org/audit-ci.json",
+  "allowlist": [],
+  "moderate": true,
+  "high": true,
+  "critical": true,
+  "report-failed-fetch": true,
+  "registry": "https://registry.npmjs.org",
+  "pass-enoaudit": false,
+  "advisories": {
+    "explained": []
+  },
+  "packages": {
+    "comment": "Specific package exemptions — reason required when used",
+    "example-package": {
+      "advisories": [1234567],
+      "reason": "Only used as transitive dependency, not called directly"
+    }
+  }
+}

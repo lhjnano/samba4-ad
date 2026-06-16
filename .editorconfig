@@ -1,0 +1,64 @@
+# Samba 4 AD Manager — Editor Configuration
+# All IDEs and editors apply these settings automatically.
+
+root = true
+
+# ============================================
+# Defaults (all files)
+# ============================================
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# ============================================
+# Language overrides
+# ============================================
+
+# Python
+[*.py]
+indent_size = 4
+max_line_length = 88
+
+# JavaScript / TypeScript / JSX / TSX
+[*.{js,jsx,ts,tsx}]
+indent_size = 2
+max_line_length = 100
+
+# CSS / SCSS
+[*.{css,scss}]
+indent_size = 2
+
+# HTML
+[*.html]
+indent_size = 2
+
+# YAML / TOML / JSON
+[*.{yaml,yml,toml,json}]
+indent_size = 2
+
+# Markdown
+[*.md]
+trim_trailing_whitespace = false
+
+# Shell
+[*.sh]
+indent_size = 4
+
+# Makefile (must use tabs)
+[Makefile]
+indent_style = tab
+
+[{Makefile*,*.mk}]
+indent_style = tab
+
+# Docker
+[Dockerfile*]
+indent_size = 4
+
+# Documentation
+[docs/**/*.md]
+max_line_length = 120

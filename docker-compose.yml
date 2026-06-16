@@ -1,0 +1,77 @@
+# Samba 4 AD Manager — Full Stack Docker Compose
+#
+# Usage:
+#   docker compose up -d          # Start Samba DC + Web App
+#   docker compose logs -f app    # Watch app logs
+#   docker compose down           # Stop everything
+#
+# After startup:
+#   - Samba DC:     localhost:389 (LDAP), :88 (Kerberos), :53 (DNS)
+#   - Web App:      localhost:8000
+#   - First run:    Open http://localhost:8000 → Setup Wizard
+#
+
+services:
+  samba-dc:
+    image: instantlinux/samba-dc:latest
+    container_name: samba-dc
+    hostname: dc01
+    environment:
+      - SAMBA_DC_REALM=CORP.LOCAL
+      - SAMBA_DC_DOMAIN=CORP
+      - SAMBA_DC_ADMIN_PASSWORD=Passw0rd!
+      - SAMBA_DC_DNS_FORWARDER=8.8.8.8
+    ports:
+      - "389:389"     # LDAP
+      - "636:636"     # LDAPS
+      - "88:88"       # Kerberos
+      - "53:53"       # DNS
+      - "445:445"     # SMB/CIFS
+    volumes:
+      - samba_data:/var/lib/samba
+      - samba_config:/etc/samba
+    networks:
+      - ad-network
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo '' | nc -w1 localhost 389"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: samba-ad-manager
+    depends_on:
+      samba-dc:
+        condition: service_healthy
+    environment:
+      - APP_MODE=ldap
+      - LDAP_HOST=samba-dc
+      - LDAP_PORT=389
+      - LDAP_USE_SSL=false
+      - LDAP_BIND_DN=CN=Administrator,CN=Users,DC=CORP,DC=LOCAL
+      - LDAP_BIND_PASSWORD=Passw0rd!
+      - LDAP_SEARCH_BASE=DC=CORP,DC=LOCAL
+      - SAMBA_TOOL_PATH=samba-tool
+      - SAMBA_CONFIG=/etc/samba/smb.conf
+    ports:
+      - "8000:8000"
+    volumes:
+      - samba_config:/etc/samba:ro
+      - ./:/app
+    networks:
+      - ad-network
+    command: >
+      uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    working_dir: /app/backend
+
+volumes:
+  samba_data:
+  samba_config:
+
+networks:
+  ad-network:
+    driver: bridge

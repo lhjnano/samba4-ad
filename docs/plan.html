@@ -1,0 +1,1958 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Samba 4 AD DC 테스트 환경 구축 계획</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ── Reset & Variables ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:          #0d1117;
+    --card:        #161b22;
+    --border:      #30363d;
+    --text:        #e6edf3;
+    --text-muted:  #8b949e;
+    --text-dim:    #6e7681;
+    --accent-blue: #3b82f6;
+    --accent-green:#10b981;
+    --accent-warn: #f59e0b;
+    --accent-red:  #ef4444;
+    --accent-purple:#7c3aed;
+
+    /* version badge colors */
+    --v2016-bg: #1d4ed8;
+    --v2019-bg: #0369a1;
+    --v2022-bg: #0f766e;
+    --samba-bg: #7c3aed;
+
+    /* support cell colors */
+    --ok-color:      #10b981;
+    --ok-cell:       rgba(16,185,129,0.08);
+    --partial-color: #f59e0b;
+    --partial-cell:  rgba(245,158,11,0.08);
+    --no-color:      #ef4444;
+    --no-cell:       rgba(239,68,68,0.08);
+
+    /* alert backgrounds */
+    --alert-info-bg:   #0f2a4a;
+    --alert-info-bd:   #3b82f6;
+    --alert-warn-bg:   #2a1f0a;
+    --alert-warn-bd:   #f59e0b;
+    --alert-ok-bg:     #0a2a1f;
+    --alert-ok-bd:     #10b981;
+    --alert-danger-bg: #2a0a0f;
+    --alert-danger-bd: #ef4444;
+
+    --sidebar-w: 240px;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 15px;
+    min-height: 100vh;
+  }
+
+  /* ── Page Header ── */
+  .page-header {
+    background: linear-gradient(135deg, #0d1117 0%, #0f2a4a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 48px 60px 40px 60px;
+    position: relative;
+    overflow: hidden;
+  }
+  .page-header-inner {
+    max-width: calc(var(--sidebar-w) + 860px + 80px);
+    margin: 0 auto;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .page-header-text { flex: 1; }
+  .page-header h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+  }
+  .page-header .subtitle {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+  .meta-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .meta-chip {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 12px;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .meta-chip .chip-label { color: var(--text-dim); }
+  .meta-chip .chip-val   { color: var(--text); font-weight: 500; }
+
+  /* server/network SVG decoration */
+  .header-deco {
+    flex-shrink: 0;
+    opacity: 0.18;
+    margin-top: -8px;
+  }
+
+  /* ── Layout Shell ── */
+  .layout {
+    display: flex;
+    max-width: calc(var(--sidebar-w) + 860px + 80px);
+    margin: 0 auto;
+    padding: 0 60px;
+    align-items: flex-start;
+    gap: 0;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+    padding: 32px 0 40px;
+    background: var(--bg);
+    margin-left: -60px;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .sidebar::-webkit-scrollbar { width: 3px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .sidebar-logo {
+    padding: 0 20px 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .sidebar-logo .logo-mark {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .sidebar-logo .logo-icon {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-green));
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  .sidebar-logo .logo-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  .sidebar-logo .logo-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+  }
+
+  .sidebar-nav { padding: 0 12px; }
+  .nav-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    padding: 0 8px 8px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    border-left: 2px solid transparent;
+    text-decoration: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    transition: color 0.15s, background 0.15s, border-color 0.15s;
+    margin-bottom: 2px;
+    cursor: pointer;
+  }
+  .nav-item:hover {
+    color: var(--text);
+    background: rgba(59,130,246,0.06);
+  }
+  .nav-item.active {
+    color: var(--accent-blue);
+    border-left-color: var(--accent-blue);
+    background: rgba(59,130,246,0.08);
+  }
+  .nav-item .nav-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+    width: 18px;
+    text-align: right;
+  }
+  .nav-item.active .nav-num { color: var(--accent-blue); }
+
+  /* ── Content ── */
+  .content {
+    flex: 1;
+    min-width: 0;
+    padding: 40px 0 80px 48px;
+  }
+
+  /* ── Section ── */
+  section {
+    margin-bottom: 64px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+  }
+  section.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  h2.section-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    letter-spacing: -0.02em;
+  }
+  h2.section-title .num {
+    background: var(--accent-blue);
+    color: #fff;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+  }
+
+  h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 32px 0 12px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  h4 {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 20px 0 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  p  { margin-bottom: 14px; color: var(--text-muted); line-height: 1.75; }
+  ul, ol { padding-left: 22px; margin-bottom: 14px; color: var(--text-muted); }
+  li { margin-bottom: 5px; }
+  strong { color: var(--text); font-weight: 600; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 22px;
+    margin-bottom: 16px;
+  }
+  .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+  .card-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+
+  /* ── Spec Grid ── */
+  .spec-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .spec-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 16px;
+    text-align: center;
+    transition: border-color 0.2s;
+  }
+  .spec-item:hover { border-color: var(--accent-blue); }
+  .spec-item .spec-val {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent-blue);
+    font-family: var(--font-mono);
+  }
+  .spec-item .spec-label { font-size: 11px; color: var(--text-dim); margin-top: 5px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+  /* ── Table ── */
+  .tbl-wrap { overflow-x: auto; margin-bottom: 20px; border-radius: 8px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  thead th {
+    background: #1c2128;
+    color: var(--text-muted);
+    padding: 11px 16px;
+    text-align: left;
+    font-weight: 600;
+    white-space: nowrap;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr { border-bottom: 1px solid rgba(48,54,61,0.6); transition: background 0.12s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+  td { padding: 10px 16px; vertical-align: middle; color: var(--text-muted); }
+  td:first-child { color: var(--text); font-weight: 500; }
+
+  /* support icons */
+  .ok      { color: var(--ok-color);      font-weight: 700; }
+  .partial { color: var(--partial-color); font-weight: 700; }
+  .no      { color: var(--no-color);      font-weight: 700; }
+  td.ok      { background: var(--ok-cell); }
+  td.partial { background: var(--partial-cell); }
+  td.no      { background: var(--no-cell); }
+
+  /* ── Tags ── */
+  .tag {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    margin: 2px;
+  }
+  .tag.blue   { background: rgba(59,130,246,0.15);  color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }
+  .tag.green  { background: rgba(16,185,129,0.15);  color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
+  .tag.orange { background: rgba(245,158,11,0.15);  color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+  .tag.red    { background: rgba(239,68,68,0.15);   color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+  .tag.purple { background: rgba(124,58,237,0.15);  color: #c4b5fd; border: 1px solid rgba(124,58,237,0.3); }
+  .tag.gray   { background: rgba(110,118,129,0.15); color: #8b949e; border: 1px solid rgba(110,118,129,0.3); }
+
+  /* ── Version Badges ── */
+  .ver-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 5px;
+    padding: 3px 11px;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    color: #fff;
+    letter-spacing: 0;
+    margin-right: 6px;
+  }
+  .ver-badge.v2016 { background: var(--v2016-bg); }
+  .ver-badge.v2019 { background: var(--v2019-bg); }
+  .ver-badge.v2022 { background: var(--v2022-bg); }
+  .ver-badge.samba { background: var(--samba-bg); }
+
+  /* ── Code Block (terminal) ── */
+  .code-block {
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+  }
+  .code-bar {
+    background: #1c2128;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .traffic-lights { display: flex; gap: 6px; align-items: center; }
+  .tl { width: 12px; height: 12px; border-radius: 50%; }
+  .tl-red    { background: #ef4444; }
+  .tl-yellow { background: #f59e0b; }
+  .tl-green  { background: #10b981; }
+  .code-bar-label { font-size: 12px; color: var(--text-dim); font-family: var(--font-mono); }
+  .copy-btn {
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 10px;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s, border-color 0.15s;
+    letter-spacing: 0;
+  }
+  .copy-btn:hover { color: var(--text); background: rgba(255,255,255,0.07); border-color: #484f58; }
+  .copy-btn.copied { color: var(--accent-green); border-color: var(--accent-green); }
+  .code-block pre {
+    background: var(--bg);
+    color: #cdd9e5;
+    padding: 18px 20px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.65;
+    margin: 0;
+    font-family: var(--font-mono);
+  }
+  .code-block pre code { font-family: inherit; color: inherit; }
+
+  /* inline code */
+  .inline-code {
+    background: rgba(110,118,129,0.12);
+    color: #cdd9e5;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 12.5px;
+    font-family: var(--font-mono);
+    border: 1px solid rgba(110,118,129,0.2);
+  }
+
+  /* ── Alert Boxes ── */
+  .alert {
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+    display: flex;
+    gap: 13px;
+    align-items: flex-start;
+    border-left: 3px solid;
+  }
+  .alert.info   { background: var(--alert-info-bg);   border-left-color: var(--alert-info-bd);   border: 1px solid rgba(59,130,246,0.2);  border-left: 3px solid var(--alert-info-bd); }
+  .alert.warn   { background: var(--alert-warn-bg);   border-left-color: var(--alert-warn-bd);   border: 1px solid rgba(245,158,11,0.2);  border-left: 3px solid var(--alert-warn-bd); }
+  .alert.ok     { background: var(--alert-ok-bg);     border-left-color: var(--alert-ok-bd);     border: 1px solid rgba(16,185,129,0.2);  border-left: 3px solid var(--alert-ok-bd); }
+  .alert.danger { background: var(--alert-danger-bg); border-left-color: var(--alert-danger-bd); border: 1px solid rgba(239,68,68,0.2);   border-left: 3px solid var(--alert-danger-bd); }
+  .alert-icon  { font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+  .alert-body  { font-size: 13.5px; color: var(--text-muted); }
+  .alert-body strong { display: block; margin-bottom: 5px; font-size: 14px; color: var(--text); }
+
+  /* ── Architecture Diagram (CSS Flexbox) ── */
+  .arch-diagram {
+    background: #0a0f16;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 36px 28px 28px;
+    margin-bottom: 20px;
+    font-family: var(--font-mono);
+  }
+  .arch-diagram-title {
+    text-align: center;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    margin-bottom: 28px;
+  }
+  .arch-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+  }
+  .arch-node {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .arch-node.central {
+    background: #1e3a5f;
+    border: 2px solid var(--accent-blue);
+    border-radius: 10px;
+    padding: 20px 24px;
+    min-width: 240px;
+  }
+  .arch-node.central .arch-node-title {
+    color: #93c5fd;
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+  .arch-node.central .arch-node-domain {
+    color: var(--accent-green);
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+  .arch-node.central .arch-node-ports { list-style: none; padding: 0; margin: 0; }
+  .arch-node.central .arch-node-ports li {
+    color: #8b949e;
+    font-size: 11px;
+    margin-bottom: 3px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .arch-node.central .arch-node-ports li::before {
+    content: '├';
+    color: var(--border);
+  }
+  .arch-node.central .arch-node-ports li:last-child::before {
+    content: '└';
+  }
+  .arch-node.side { min-width: 160px; }
+  .arch-node.side .arch-node-title { color: var(--text); font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .arch-node.side .arch-node-sub  { color: var(--text-dim); font-size: 11px; }
+
+  .arch-connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 12px;
+    gap: 4px;
+  }
+  .arch-connector-line {
+    width: 48px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    position: relative;
+  }
+  .arch-connector-line::after {
+    content: '';
+    position: absolute;
+    right: -4px;
+    top: -3px;
+    border-left: 6px solid var(--border);
+    border-top: 3px solid transparent;
+    border-bottom: 3px solid transparent;
+  }
+  .arch-connector-line.left::after {
+    left: -4px; right: auto;
+    border-right: 6px solid var(--border);
+    border-left: none;
+  }
+  .arch-connector-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .arch-bottom-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 20px;
+    gap: 12px;
+  }
+  .arch-vert-connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+  .arch-vert-line {
+    width: 1px;
+    height: 32px;
+    background: linear-gradient(180deg, var(--accent-blue), var(--border));
+  }
+  .arch-vert-line.green {
+    background: linear-gradient(180deg, var(--accent-green), var(--border));
+  }
+  .arch-vert-arrow {
+    width: 0; height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 6px solid var(--border);
+  }
+  .arch-vert-label { font-size: 10px; color: var(--text-dim); text-align: center; margin-bottom: 6px; white-space: nowrap; }
+
+  .arch-port-chips {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  .port-chip {
+    background: rgba(59,130,246,0.08);
+    border: 1px solid rgba(59,130,246,0.25);
+    border-radius: 16px;
+    padding: 4px 12px;
+    font-size: 11px;
+    color: #93c5fd;
+    font-family: var(--font-mono);
+    font-weight: 600;
+  }
+
+  .arch-note-row {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .arch-note {
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .arch-note::before { content: '*'; color: #fcd34d; }
+
+  /* ── Phase Timeline ── */
+  .phase-timeline { position: relative; padding-left: 52px; }
+  .phase-timeline::before {
+    content: '';
+    position: absolute;
+    left: 18px;
+    top: 20px;
+    bottom: 20px;
+    width: 2px;
+    background: var(--border);
+  }
+
+  .phase-card {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px 22px;
+    margin-bottom: 24px;
+    transition: box-shadow 0.2s, border-color 0.2s;
+  }
+  .phase-card:hover {
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    border-color: #484f58;
+  }
+
+  .phase-circle {
+    position: absolute;
+    left: -42px;
+    top: 18px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    z-index: 1;
+    border: 2px solid var(--bg);
+  }
+  .p1 .phase-circle { background: #1a3a8f; color: #93c5fd; box-shadow: 0 0 0 1px #1d4ed8; }
+  .p2 .phase-circle { background: #0a4a2a; color: #6ee7b7; box-shadow: 0 0 0 1px #059669; }
+  .p3 .phase-circle { background: #4a2a0a; color: #fcd34d; box-shadow: 0 0 0 1px #b45309; }
+  .p4 .phase-circle { background: #3a1a8f; color: #c4b5fd; box-shadow: 0 0 0 1px var(--accent-purple); }
+  .p5 .phase-circle { background: #4a0a1a; color: #fca5a5; box-shadow: 0 0 0 1px #be123c; }
+
+  .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .phase-badge {
+    border-radius: 4px;
+    padding: 2px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    letter-spacing: 0.02em;
+  }
+  .p1 .phase-badge { background: rgba(29,78,216,0.2); color: #93c5fd; border: 1px solid rgba(29,78,216,0.4); }
+  .p2 .phase-badge { background: rgba(5,150,105,0.2);  color: #6ee7b7; border: 1px solid rgba(5,150,105,0.4); }
+  .p3 .phase-badge { background: rgba(180,83,9,0.2);   color: #fcd34d; border: 1px solid rgba(180,83,9,0.4); }
+  .p4 .phase-badge { background: rgba(124,58,237,0.2); color: #c4b5fd; border: 1px solid rgba(124,58,237,0.4); }
+  .p5 .phase-badge { background: rgba(190,18,60,0.2);  color: #fca5a5; border: 1px solid rgba(190,18,60,0.4); }
+
+  .phase-title { font-size: 15px; font-weight: 600; color: var(--text); }
+
+  /* ── Step List ── */
+  .step-list { list-style: none; padding: 0; }
+  .step-list li { display: flex; gap: 14px; margin-bottom: 16px; align-items: flex-start; }
+  .step-num {
+    background: rgba(59,130,246,0.15);
+    border: 1px solid rgba(59,130,246,0.3);
+    color: var(--accent-blue);
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .step-body { flex: 1; }
+  .step-body strong { display: block; margin-bottom: 4px; color: var(--text); }
+
+  /* ── Test scenario result badge ── */
+  .result-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(16,185,129,0.12);
+    border: 1px solid rgba(16,185,129,0.3);
+    border-radius: 12px;
+    padding: 3px 10px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--accent-green);
+    white-space: nowrap;
+  }
+  .result-badge::before { content: '✓'; font-size: 10px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 1100px) {
+    .layout { padding: 0 32px; }
+    .page-header { padding: 36px 32px 32px; }
+    :root { --sidebar-w: 210px; }
+  }
+  @media (max-width: 880px) {
+    .sidebar { display: none; }
+    .layout  { padding: 0 20px; }
+    .page-header { padding: 28px 20px 24px; }
+    .content { padding: 28px 0 60px 0; }
+    .card-grid.three { grid-template-columns: 1fr 1fr; }
+    .spec-grid { grid-template-columns: 1fr 1fr; }
+    .arch-row { flex-direction: column; }
+    .arch-connector { flex-direction: row; }
+  }
+  @media (max-width: 560px) {
+    .card-grid, .card-grid.three { grid-template-columns: 1fr; }
+    .header-deco { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Page Header ── -->
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="page-header-text">
+      <h1>Samba 4 AD DC 테스트 환경 구축 계획</h1>
+      <div class="subtitle">Ubuntu VM 기반 Active Directory 대체 구성 — Windows Server AD 비교 포함</div>
+      <div class="meta-row">
+        <div class="meta-chip"><span class="chip-label">대상</span><span class="chip-val">Ubuntu 22.04 LTS VM</span></div>
+        <div class="meta-chip"><span class="chip-label">목적</span><span class="chip-val">LDAP/Kerberos/SMB 통합 테스트</span></div>
+        <div class="meta-chip"><span class="chip-label">작성일</span><span class="chip-val">2026-06-09</span></div>
+        <div class="meta-chip"><span class="chip-label">상태</span><span class="chip-val">계획</span></div>
+      </div>
+    </div>
+    <!-- SVG: server/network decoration -->
+    <div class="header-deco">
+      <svg width="120" height="100" viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="8" width="100" height="20" rx="3" stroke="#3b82f6" stroke-width="1.5"/>
+        <circle cx="100" cy="18" r="4" fill="#10b981"/>
+        <circle cx="88" cy="18" r="4" fill="#f59e0b"/>
+        <rect x="10" y="36" width="100" height="20" rx="3" stroke="#3b82f6" stroke-width="1.5"/>
+        <circle cx="100" cy="46" r="4" fill="#10b981"/>
+        <rect x="10" y="64" width="100" height="20" rx="3" stroke="#3b82f6" stroke-width="1.5"/>
+        <circle cx="100" cy="74" r="4" fill="#10b981"/>
+        <circle cx="88" cy="74" r="4" fill="#3b82f6" opacity="0.5"/>
+        <line x1="30" y1="88" x2="90" y2="88" stroke="#30363d" stroke-width="1.5"/>
+        <line x1="30" y1="84" x2="30" y2="92" stroke="#30363d" stroke-width="1.5"/>
+        <line x1="60" y1="84" x2="60" y2="92" stroke="#30363d" stroke-width="1.5"/>
+        <line x1="90" y1="84" x2="90" y2="92" stroke="#30363d" stroke-width="1.5"/>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- ── Layout ── -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <nav class="sidebar" aria-label="섹션 목차">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-name">Samba 4 AD</div>
+      </div>
+      <div class="logo-sub">test-plan v1.0</div>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-label">목차</div>
+      <a class="nav-item active" href="#s1" onclick="return false;" data-target="s1">
+        <span class="nav-num">1</span>Windows Server 버전별 비교
+      </a>
+      <a class="nav-item" href="#s2" onclick="return false;" data-target="s2">
+        <span class="nav-num">2</span>Samba 4 vs Windows AD
+      </a>
+      <a class="nav-item" href="#s3" onclick="return false;" data-target="s3">
+        <span class="nav-num">3</span>테스트 환경 아키텍처
+      </a>
+      <a class="nav-item" href="#s4" onclick="return false;" data-target="s4">
+        <span class="nav-num">4</span>VM 구성 및 요구사항
+      </a>
+      <a class="nav-item" href="#s5" onclick="return false;" data-target="s5">
+        <span class="nav-num">5</span>구축 단계별 계획
+      </a>
+      <a class="nav-item" href="#s6" onclick="return false;" data-target="s6">
+        <span class="nav-num">6</span>테스트 시나리오
+      </a>
+      <a class="nav-item" href="#s7" onclick="return false;" data-target="s7">
+        <span class="nav-num">7</span>DNS 설정
+      </a>
+      <a class="nav-item" href="#s8" onclick="return false;" data-target="s8">
+        <span class="nav-num">8</span>기본 객체 초기화
+      </a>
+    </div>
+  </nav>
+
+  <!-- Content -->
+  <main class="content">
+
+    <!-- S1. Windows Server AD 버전별 특징 -->
+    <section id="s1">
+      <h2 class="section-title"><span class="num">1</span>Windows Server AD 버전별 특징 비교</h2>
+
+      <p>Windows Server 2016 → 2019 → 2022 순서로 AD 기능이 어떻게 발전했는지 정리합니다. 도메인/포레스트 기능 수준(Functional Level)은 2016 이후 새로운 레벨이 추가되지 않았습니다.</p>
+
+      <div class="alert info">
+        <div class="alert-icon">ℹ️</div>
+        <div class="alert-body">
+          <strong>도메인 기능 수준 (DFL / FFL)</strong>
+          Windows Server 2019, 2022는 새로운 기능 수준을 추가하지 않았습니다. 최신 기능 수준은 여전히 <strong>Windows Server 2016</strong>입니다. 2019/2022의 AD 개선은 기능 수준과 무관한 개별 기능 추가 형태로 제공됩니다.
+        </div>
+      </div>
+
+      <h3><span class="ver-badge v2016">Windows Server 2016</span> AD 신규 기능</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>기능</th><th>설명</th><th>비고</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Privileged Access Management (PAM)</td>
+              <td>시간 제한 그룹 멤버십. 특정 시간 동안만 권한 있는 그룹에 속하도록 제한 (Shadow Principal)</td>
+              <td><span class="tag green">DFL 2016 필요</span></td>
+            </tr>
+            <tr>
+              <td>Windows Hello for Business</td>
+              <td>PIN/생체인식으로 도메인 로그인 대체. PKI 또는 Azure AD 기반 인증</td>
+              <td><span class="tag blue">PKI 필요</span></td>
+            </tr>
+            <tr>
+              <td>Kerberos PKInit Freshness</td>
+              <td>인증서 기반 로그인 시 최신 패스워드 변경 여부 검증 강화</td>
+              <td><span class="tag green">DFL 2016 필요</span></td>
+            </tr>
+            <tr>
+              <td>RODC NTLM Rolling Secrets</td>
+              <td>읽기 전용 DC(RODC)에서 NTLM 해시를 주기적으로 롤링하여 해시 탈취 피해 최소화</td>
+              <td><span class="tag green">DFL 2016 필요</span></td>
+            </tr>
+            <tr>
+              <td>Just Enough Administration (JEA)</td>
+              <td>PowerShell 기반 위임 관리. 최소 권한으로 특정 관리 작업만 허용</td>
+              <td><span class="tag gray">WinRM 기반</span></td>
+            </tr>
+            <tr>
+              <td>AD FS — Azure MFA 연동</td>
+              <td>온프레미스 AD FS와 Azure MFA를 통합하여 추가 인증 요소 적용</td>
+              <td><span class="tag blue">Azure 연동</span></td>
+            </tr>
+            <tr>
+              <td>Shielded VM 지원</td>
+              <td>AD DS를 Host Guardian Service와 연동하여 보호된 VM 인증</td>
+              <td><span class="tag orange">HGS 필요</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3><span class="ver-badge v2019">Windows Server 2019</span> AD 신규 기능</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>기능</th><th>설명</th><th>비고</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Azure AD 하이브리드 조인 개선</td>
+              <td>온프레미스 AD + Azure AD 동시 등록. 조건부 액세스 정책 적용 가능</td>
+              <td><span class="tag blue">Azure 연동</span></td>
+            </tr>
+            <tr>
+              <td>gMSA 크로스 포레스트 지원</td>
+              <td>그룹 관리 서비스 계정(gMSA)을 포레스트 트러스트 경계 너머에서도 사용 가능</td>
+              <td><span class="tag green">트러스트 필요</span></td>
+            </tr>
+            <tr>
+              <td>AD FS — Passwordless 인증</td>
+              <td>FIDO2 보안 키, Windows Hello 등 비밀번호 없는 인증 흐름 지원</td>
+              <td><span class="tag purple">FIDO2</span></td>
+            </tr>
+            <tr>
+              <td>AD FS OIDC/OAuth 2.0 개선</td>
+              <td>OpenID Connect 및 OAuth 2.0 흐름 확장. SPA/모바일 앱 인증 개선</td>
+              <td><span class="tag blue">표준 프로토콜</span></td>
+            </tr>
+            <tr>
+              <td>Credential Guard 강화</td>
+              <td>NTLM/Kerberos 자격 증명을 가상화 기반 보안(VBS) 격리 영역에 보관</td>
+              <td><span class="tag orange">VBS 필요</span></td>
+            </tr>
+            <tr>
+              <td>Azure AD Connect 개선</td>
+              <td>온프레미스 AD 개체를 Azure AD로 동기화하는 도구 성능 및 안정성 향상</td>
+              <td><span class="tag blue">Azure 연동</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3><span class="ver-badge v2022">Windows Server 2022</span> AD 신규 기능</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>기능</th><th>설명</th><th>비고</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Azure AD Kerberos (클라우드 Kerberos 트러스트)</td>
+              <td>Windows Hello for Business를 PKI 없이 Azure AD Kerberos만으로 구성 가능. 배포 단순화</td>
+              <td><span class="tag blue">Azure 필요</span></td>
+            </tr>
+            <tr>
+              <td>LDAP 채널 바인딩 / 서명 기본 강제</td>
+              <td>LDAP 연결에 서명 및 채널 바인딩을 기본 요구. LDAP relay 공격 방어</td>
+              <td><span class="tag red">보안 강화</span></td>
+            </tr>
+            <tr>
+              <td>TLS 1.3 지원</td>
+              <td>AD FS 및 LDAPS에서 TLS 1.3 프로토콜 사용 가능</td>
+              <td><span class="tag green">보안 강화</span></td>
+            </tr>
+            <tr>
+              <td>SMB 암호화 기본 강화</td>
+              <td>SYSVOL/NETLOGON 공유 접근 시 SMB 암호화 적용 권장 정책 강화</td>
+              <td><span class="tag orange">SMB 3.1.1</span></td>
+            </tr>
+            <tr>
+              <td>감사 로그 개선</td>
+              <td>AD DS 변경 사항에 대한 이벤트 로그 세분화. 계정 잠금, 그룹 변경 추적 강화</td>
+              <td><span class="tag gray">이벤트 로그</span></td>
+            </tr>
+            <tr>
+              <td>AD FS Rapid Restore 개선</td>
+              <td>AD FS 구성 백업/복원 속도 향상 및 Azure Backup 연동</td>
+              <td><span class="tag blue">Azure 연동</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="alert warn">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-body">
+          <strong>핵심 관찰</strong>
+          2019, 2022의 AD 신기능 대부분이 <strong>Azure 연동</strong>에 집중되어 있습니다. 순수 온프레미스 환경에서는 2016 대비 실질적 차이가 크지 않습니다. Samba 4로 온프레미스 AD를 대체할 경우 Azure 연동 기능은 해당 없으므로 기능 격차가 더 줄어듭니다.
+        </div>
+      </div>
+    </section>
+
+    <!-- S2. Samba 4 vs Windows AD -->
+    <section id="s2">
+      <h2 class="section-title"><span class="num">2</span>Samba 4 vs Windows AD 기능 대조</h2>
+
+      <p>
+        <span class="ver-badge samba">Samba 4</span>가 Windows Server AD의 핵심 프로토콜을 오픈소스로 재구현한 구현체입니다.
+        최대 <strong>Windows Server 2016 기능 수준</strong>까지 지원합니다.
+      </p>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>기능 범주</th>
+              <th>세부 기능</th>
+              <th>Windows AD</th>
+              <th>Samba 4</th>
+              <th>비고</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td rowspan="4"><strong>핵심 프로토콜</strong></td>
+              <td>LDAP v3</td>
+              <td class="ok">✔ 완전</td>
+              <td class="ok">✔ 완전</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>Kerberos 5 (KDC)</td>
+              <td class="ok">✔ 완전</td>
+              <td class="ok">✔ 완전</td>
+              <td>MIT Kerberos 기반</td>
+            </tr>
+            <tr>
+              <td>DNS (AD 통합)</td>
+              <td class="ok">✔ 완전</td>
+              <td class="ok">✔ 완전</td>
+              <td>internal 또는 BIND9</td>
+            </tr>
+            <tr>
+              <td>SMB/CIFS 파일 공유</td>
+              <td class="ok">✔ 완전</td>
+              <td class="ok">✔ 완전</td>
+              <td>SMB 3.x 지원</td>
+            </tr>
+            <tr>
+              <td rowspan="4"><strong>디렉토리 서비스</strong></td>
+              <td>사용자/그룹/OU 관리</td>
+              <td class="ok">✔ 완전</td>
+              <td class="ok">✔ 완전</td>
+              <td>samba-tool / LDAP API</td>
+            </tr>
+            <tr>
+              <td>도메인 조인 (Windows)</td>
+              <td class="ok">✔ 완전</td>
+              <td class="ok">✔ 완전</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>도메인 조인 (Linux/sssd)</td>
+              <td class="ok">✔ 완전</td>
+              <td class="ok">✔ 완전</td>
+              <td>realm join 사용</td>
+            </tr>
+            <tr>
+              <td>패스워드 정책 (복잡도/만료)</td>
+              <td class="ok">✔ 완전</td>
+              <td class="ok">✔ 완전</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td rowspan="3"><strong>그룹 정책 (GPO)</strong></td>
+              <td>기본 보안 정책 (패스워드, 잠금)</td>
+              <td class="ok">✔ 완전</td>
+              <td class="ok">✔ 완전</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>드라이브 매핑, 환경 설정</td>
+              <td class="ok">✔ 완전</td>
+              <td class="partial">△ 대부분</td>
+              <td>일부 CSE 미지원</td>
+            </tr>
+            <tr>
+              <td>AppLocker, WMI 필터, BitLocker</td>
+              <td class="ok">✔ 완전</td>
+              <td class="no">✘ 미지원</td>
+              <td>Windows 전용</td>
+            </tr>
+            <tr>
+              <td rowspan="3"><strong>복제 / 고가용성</strong></td>
+              <td>Multi-DC LDAP 복제</td>
+              <td class="ok">✔ 완전</td>
+              <td class="ok">✔ 완전</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>SYSVOL 복제 (DFS-R)</td>
+              <td class="ok">✔ 완전</td>
+              <td class="no">✘ 미지원</td>
+              <td>rsync/lsyncd 대체</td>
+            </tr>
+            <tr>
+              <td>RODC (읽기 전용 DC)</td>
+              <td class="ok">✔ 완전</td>
+              <td class="partial">△ 부분</td>
+              <td>기본 기능만 지원</td>
+            </tr>
+            <tr>
+              <td rowspan="3"><strong>인증 확장</strong></td>
+              <td>Windows Hello for Business</td>
+              <td class="ok">✔ 완전</td>
+              <td class="no">✘ 미지원</td>
+              <td>Windows 전용</td>
+            </tr>
+            <tr>
+              <td>PAM (시간 제한 권한)</td>
+              <td class="ok">✔ 완전</td>
+              <td class="partial">△ 부분</td>
+              <td>samba-tool 일부 구현</td>
+            </tr>
+            <tr>
+              <td>FIDO2 / Passwordless</td>
+              <td class="ok">✔ 완전 (AD FS)</td>
+              <td class="no">✘ 미지원</td>
+              <td>AD FS 자체가 없음</td>
+            </tr>
+            <tr>
+              <td rowspan="2"><strong>Azure 연동</strong></td>
+              <td>Azure AD Connect / 하이브리드 조인</td>
+              <td class="ok">✔ 완전</td>
+              <td class="no">✘ 미지원</td>
+              <td>Azure 전용</td>
+            </tr>
+            <tr>
+              <td>Azure AD Kerberos 트러스트</td>
+              <td class="ok">✔ 완전</td>
+              <td class="no">✘ 미지원</td>
+              <td>Azure 전용</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="alert ok">
+        <div class="alert-icon">✅</div>
+        <div class="alert-body">
+          <strong>결론 — 이 테스트 환경에서 Samba 4로 충분한 이유</strong>
+          테스트 목적(LDAP/Kerberos 연동 개발, Linux 서버 도메인 조인, Windows PC 파일 공유)은 Samba 4가 완전히 지원하는 기능 범위 안에 있습니다. Azure 연동, AppLocker, Windows Hello 등은 이 환경에서 불필요합니다.
+        </div>
+      </div>
+    </section>
+
+    <!-- S3. 아키텍처 -->
+    <section id="s3">
+      <h2 class="section-title"><span class="num">3</span>테스트 환경 아키텍처</h2>
+
+      <!-- CSS Flexbox Architecture Diagram -->
+      <div class="arch-diagram">
+        <div class="arch-diagram-title">테스트 환경 전체 구성</div>
+
+        <!-- top row: Linux ← DC → Windows -->
+        <div class="arch-row">
+          <!-- left node -->
+          <div class="arch-node side">
+            <div class="arch-node-title">Linux 서버들</div>
+            <div class="arch-node-sub">테스트 대상</div>
+            <div class="arch-node-sub" style="margin-top:6px;color:#6ee7b7;font-size:10px;">sssd / realm join</div>
+          </div>
+
+          <!-- left connector -->
+          <div class="arch-connector">
+            <div class="arch-connector-line left"></div>
+            <div class="arch-connector-label">sssd/<br>realm join</div>
+          </div>
+
+          <!-- central node -->
+          <div class="arch-node central">
+            <div class="arch-node-title">Ubuntu 22.04 VM — Samba 4 AD DC</div>
+            <div class="arch-node-domain">도메인: TEST.LOCAL</div>
+            <ul class="arch-node-ports">
+              <li>LDAP  (TCP 389 / LDAPS 636)</li>
+              <li>Kerberos KDC  (TCP/UDP 88)</li>
+              <li>DNS   (UDP 53)</li>
+              <li>SMB 파일 공유  (TCP 445)</li>
+            </ul>
+          </div>
+
+          <!-- right connector -->
+          <div class="arch-connector">
+            <div class="arch-connector-line"></div>
+            <div class="arch-connector-label">도메인 조인<br>+ SMB</div>
+          </div>
+
+          <!-- right node -->
+          <div class="arch-node side">
+            <div class="arch-node-title">Windows PC들</div>
+            <div class="arch-node-sub">파일 공유 접근</div>
+            <div class="arch-node-sub" style="margin-top:6px;color:#93c5fd;font-size:10px;">Kerberos SSO</div>
+          </div>
+        </div>
+
+        <!-- port chips -->
+        <div class="arch-port-chips">
+          <div class="port-chip">LDAP 389</div>
+          <div class="port-chip">LDAPS 636</div>
+          <div class="port-chip">Kerberos 88</div>
+          <div class="port-chip">DNS 53</div>
+          <div class="port-chip">SMB 445</div>
+        </div>
+
+        <!-- notes -->
+        <div class="arch-note-row">
+          <div class="arch-note">VM 네트워크: Bridge 모드 (Windows PC와 동일 네트워크)</div>
+          <div class="arch-note">테스트 계정: 스크립트로 2,000 ~ 100,000개 대량 생성</div>
+        </div>
+      </div>
+
+      <div class="card-grid three">
+        <div class="card">
+          <h4>인증 흐름</h4>
+          <ol>
+            <li>사용자가 Windows PC 로그인</li>
+            <li>PC → Samba DC로 Kerberos 인증</li>
+            <li>티켓 발급 후 파일 서버 접근</li>
+            <li>비밀번호 재입력 없이 SMB 자동 인증</li>
+          </ol>
+        </div>
+        <div class="card">
+          <h4>Linux 서버 접근</h4>
+          <ol>
+            <li>Linux 서버가 도메인에 조인된 상태</li>
+            <li>AD 계정으로 SSH 로그인 가능</li>
+            <li>sudo 권한을 AD 그룹으로 제어</li>
+            <li>퇴사자 계정 삭제 시 자동 차단</li>
+          </ol>
+        </div>
+        <div class="card">
+          <h4>파일 공유</h4>
+          <ol>
+            <li>Samba가 파일 서버 역할 겸임</li>
+            <li>공유 폴더 접근 권한을 AD 그룹으로 제어</li>
+            <li>Windows: <span class="inline-code">\\vm-ip\share</span> 접근</li>
+            <li>Kerberos SSO로 자동 인증</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- S4. VM 구성 -->
+    <section id="s4">
+      <h2 class="section-title"><span class="num">4</span>VM 구성 및 요구사항</h2>
+
+      <div class="spec-grid">
+        <div class="spec-item">
+          <div class="spec-val">4코어</div>
+          <div class="spec-label">CPU (권장)</div>
+        </div>
+        <div class="spec-item">
+          <div class="spec-val">8 GB</div>
+          <div class="spec-label">RAM (10만 계정 기준)</div>
+        </div>
+        <div class="spec-item">
+          <div class="spec-val">100 GB</div>
+          <div class="spec-label">디스크 (SSD 권장)</div>
+        </div>
+        <div class="spec-item">
+          <div class="spec-val">Bridge</div>
+          <div class="spec-label">네트워크 모드</div>
+        </div>
+      </div>
+
+      <div class="card-grid">
+        <div class="card">
+          <h4>OS 및 소프트웨어</h4>
+          <ul>
+            <li>Ubuntu 22.04 LTS (서버판)</li>
+            <li>Samba 4.x (apt 최신)</li>
+            <li>krb5-user, winbind</li>
+            <li>python3-ldap (계정 대량 생성)</li>
+            <li>BIND9 (선택 — 대규모 DNS 부하 시)</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>네트워크 사전 설정</h4>
+          <ul>
+            <li>고정 IP 할당 필수</li>
+            <li>Hostname을 FQDN으로 설정</li>
+            <li>systemd-resolved 비활성화 (DNS 충돌 방지)</li>
+            <li>/etc/hosts에 자신의 FQDN 등록</li>
+            <li>Windows PC DNS를 VM IP로 지정</li>
+          </ul>
+        </div>
+      </div>
+
+      <h4>사전 준비 명령어</h4>
+      <div class="code-block">
+        <div class="code-bar">
+          <div class="traffic-lights"><div class="tl tl-red"></div><div class="tl tl-yellow"></div><div class="tl tl-green"></div></div>
+          <div class="code-bar-label">bash</div>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><code># hostname 설정 (예시)
+hostnamectl set-hostname dc01.test.local
+
+# /etc/hosts 등록
+echo "192.168.1.100 dc01.test.local dc01" >> /etc/hosts
+
+# systemd-resolved 비활성화
+systemctl disable --now systemd-resolved
+rm /etc/resolv.conf
+echo "nameserver 127.0.0.1" > /etc/resolv.conf</code></pre>
+      </div>
+    </section>
+
+    <!-- S5. 구축 단계 -->
+    <section id="s5">
+      <h2 class="section-title"><span class="num">5</span>구축 단계별 계획</h2>
+
+      <div class="phase-timeline">
+
+        <!-- Phase 1 -->
+        <div class="phase-card p1">
+          <div class="phase-circle">P1</div>
+          <div class="phase-header">
+            <span class="phase-badge">Phase 1</span>
+            <span class="phase-title">Samba 4 AD DC 설치 및 도메인 프로비저닝</span>
+          </div>
+          <div class="code-block">
+            <div class="code-bar">
+              <div class="traffic-lights"><div class="tl tl-red"></div><div class="tl tl-yellow"></div><div class="tl tl-green"></div></div>
+              <div class="code-bar-label">bash</div>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code># 패키지 설치
+apt update && apt install -y samba krb5-user winbind libnss-winbind libpam-winbind
+
+# 기존 smb.conf 제거
+mv /etc/samba/smb.conf /etc/samba/smb.conf.bak
+
+# 도메인 프로비저닝
+samba-tool domain provision \
+  --use-rfc2307 \
+  --domain=TEST \
+  --realm=TEST.LOCAL \
+  --server-role=dc \
+  --dns-backend=SAMBA_INTERNAL \
+  --adminpass='Admin@Test1234!'
+
+# Kerberos 설정 복사
+cp /var/lib/samba/private/krb5.conf /etc/krb5.conf
+
+# Samba 시작
+systemctl unmask samba-ad-dc
+systemctl enable --now samba-ad-dc</code></pre>
+          </div>
+          <ul>
+            <li>프로비저닝 완료 후 <span class="inline-code">samba-tool domain info 127.0.0.1</span> 으로 도메인 정보 확인</li>
+            <li>DNS 동작 확인: <span class="inline-code">host -t SRV _ldap._tcp.test.local 127.0.0.1</span></li>
+          </ul>
+        </div>
+
+        <!-- Phase 2 -->
+        <div class="phase-card p2">
+          <div class="phase-circle">P2</div>
+          <div class="phase-header">
+            <span class="phase-badge">Phase 2</span>
+            <span class="phase-title">Windows PC 도메인 조인 테스트</span>
+          </div>
+          <ul class="step-list">
+            <li>
+              <div class="step-num">1</div>
+              <div class="step-body">
+                <strong>Windows PC DNS 설정</strong>
+                제어판 → 네트워크 → IPv4 속성 → DNS 서버를 VM IP(192.168.1.100)로 변경
+              </div>
+            </li>
+            <li>
+              <div class="step-num">2</div>
+              <div class="step-body">
+                <strong>도메인 조인</strong>
+                시스템 속성 → 컴퓨터 이름 → 변경 → 도메인: <span class="inline-code">TEST.LOCAL</span> 입력 → Administrator 자격 증명 입력
+              </div>
+            </li>
+            <li>
+              <div class="step-num">3</div>
+              <div class="step-body">
+                <strong>재부팅 후 AD 계정 로그인 확인</strong>
+                <span class="inline-code">TEST\Administrator</span> 계정으로 로그인 테스트
+              </div>
+            </li>
+            <li>
+              <div class="step-num">4</div>
+              <div class="step-body">
+                <strong>파일 공유 접근 테스트</strong>
+                탐색기에서 <span class="inline-code">\\dc01.test.local\sysvol</span> 접근 — Kerberos SSO 동작 확인
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Phase 3 -->
+        <div class="phase-card p3">
+          <div class="phase-circle">P3</div>
+          <div class="phase-header">
+            <span class="phase-badge">Phase 3</span>
+            <span class="phase-title">Linux 서버 도메인 조인 (sssd)</span>
+          </div>
+          <div class="code-block">
+            <div class="code-bar">
+              <div class="traffic-lights"><div class="tl tl-red"></div><div class="tl tl-yellow"></div><div class="tl tl-green"></div></div>
+              <div class="code-bar-label">bash</div>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code># 테스트 대상 Linux 서버에서
+apt install -y sssd sssd-ad realmd adcli
+
+# DNS가 TEST.LOCAL을 가리키도록 설정 후
+realm discover TEST.LOCAL
+
+# 도메인 조인
+realm join TEST.LOCAL -U Administrator
+
+# AD 계정 조회 확인
+id administrator@test.local
+
+# SSH 로그인 허용 (선택)
+realm permit --all</code></pre>
+          </div>
+          <ul>
+            <li>조인 후 <span class="inline-code">ssh 사용자명@test.local@서버IP</span> 로 AD 계정 로그인 테스트</li>
+            <li>sudo 권한은 <span class="inline-code">/etc/sudoers.d/</span>에 AD 그룹으로 등록</li>
+          </ul>
+        </div>
+
+        <!-- Phase 4 -->
+        <div class="phase-card p4">
+          <div class="phase-circle">P4</div>
+          <div class="phase-header">
+            <span class="phase-badge">Phase 4</span>
+            <span class="phase-title">파일 공유 설정 (AD 그룹 기반 접근 제어)</span>
+          </div>
+          <div class="code-block">
+            <div class="code-bar">
+              <div class="traffic-lights"><div class="tl tl-red"></div><div class="tl tl-yellow"></div><div class="tl tl-green"></div></div>
+              <div class="code-bar-label">smb.conf</div>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code># /etc/samba/smb.conf 에 공유 추가
+[testshare]
+    path = /data/testshare
+    valid users = @"TEST\개발팀"
+    read only = no
+    browseable = yes
+    create mask = 0660
+    directory mask = 0770</code></pre>
+          </div>
+          <div class="code-block">
+            <div class="code-bar">
+              <div class="traffic-lights"><div class="tl tl-red"></div><div class="tl tl-yellow"></div><div class="tl tl-green"></div></div>
+              <div class="code-bar-label">bash</div>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code># 공유 폴더 생성 및 권한 설정
+mkdir -p /data/testshare
+chown root:"BUILTIN\users" /data/testshare
+chmod 0770 /data/testshare
+
+# Samba 재시작
+smbcontrol all reload-config</code></pre>
+          </div>
+          <ul>
+            <li>Windows PC에서 <span class="inline-code">\\dc01.test.local\testshare</span> 접근 테스트</li>
+            <li>AD 그룹 멤버십 변경 후 접근 권한 즉시 반영 확인</li>
+          </ul>
+        </div>
+
+        <!-- Phase 5 -->
+        <div class="phase-card p5">
+          <div class="phase-circle">P5</div>
+          <div class="phase-header">
+            <span class="phase-badge">Phase 5</span>
+            <span class="phase-title">테스트 계정 대량 생성 스크립트</span>
+          </div>
+          <div class="code-block">
+            <div class="code-bar">
+              <div class="traffic-lights"><div class="tl tl-red"></div><div class="tl tl-yellow"></div><div class="tl tl-green"></div></div>
+              <div class="code-bar-label">python3  bulk_users.py</div>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code>#!/usr/bin/env python3
+"""
+대량 계정 생성 스크립트 — samba-tool 래핑
+사용법: python3 bulk_users.py --count 10000 --prefix testuser
+"""
+import subprocess
+import argparse
+
+def create_user(username, password="Test@1234!"):
+    result = subprocess.run(
+        ["samba-tool", "user", "create", username, password,
+         "--given-name", username, "--surname", "Test"],
+        capture_output=True, text=True
+    )
+    return result.returncode == 0
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--count", type=int, default=1000)
+    parser.add_argument("--prefix", default="testuser")
+    args = parser.parse_args()
+
+    success = 0
+    for i in range(args.count):
+        username = f"{args.prefix}{i:06d}"
+        if create_user(username):
+            success += 1
+        if i % 100 == 0:
+            print(f"진행: {i}/{args.count} (성공: {success})")
+
+    print(f"완료 — 총 {success}/{args.count} 계정 생성")
+
+if __name__ == "__main__":
+    main()</code></pre>
+          </div>
+          <div class="alert warn">
+            <div class="alert-icon">⚠️</div>
+            <div class="alert-body">
+              10만 계정 생성 시 samba-tool subprocess 방식은 느립니다 (계정당 ~50ms → 총 ~1.5시간). 빠른 생성이 필요하면 <strong>python-ldap 직접 LDAP Add</strong> 방식으로 전환 권장 (10배 이상 빠름).
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /phase-timeline -->
+    </section>
+
+    <!-- S6. 테스트 시나리오 -->
+    <section id="s6">
+      <h2 class="section-title"><span class="num">6</span>테스트 시나리오</h2>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>시나리오</th>
+              <th>검증 방법</th>
+              <th>기대 결과</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>Windows PC 도메인 조인 + AD 계정 로그인</td>
+              <td>Windows 로그인 화면에서 AD 계정 입력</td>
+              <td><span class="result-badge">정상 로그인</span></td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Windows PC → 파일 공유 SMB Kerberos SSO</td>
+              <td>탐색기에서 공유 폴더 접근 (비밀번호 입력 없이)</td>
+              <td><span class="result-badge">자동 인증 후 폴더 열림</span></td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>그룹 기반 파일 공유 접근 제어</td>
+              <td>그룹 미소속 계정으로 공유 접근 시도</td>
+              <td><span class="result-badge">접근 거부</span></td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>Linux 서버 AD 계정 SSH 로그인</td>
+              <td>ssh testuser000001@test.local@서버</td>
+              <td><span class="result-badge">정상 로그인</span></td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>계정 삭제 → 즉시 차단 확인</td>
+              <td>AD에서 계정 삭제 후 파일 공유/SSH 재시도</td>
+              <td><span class="result-badge">즉시 접근 거부</span></td>
+            </tr>
+            <tr>
+              <td>6</td>
+              <td>패스워드 정책 적용</td>
+              <td>짧은 패스워드 변경 시도</td>
+              <td><span class="result-badge">정책 위반 오류 반환</span></td>
+            </tr>
+            <tr>
+              <td>7</td>
+              <td>LDAP 쿼리 (대량 계정 환경)</td>
+              <td>ldapsearch로 10만 계정 조회 응답 시간 측정</td>
+              <td><span class="result-badge">3초 이내 응답</span></td>
+            </tr>
+            <tr>
+              <td>8</td>
+              <td>Kerberos 티켓 발급 및 갱신</td>
+              <td>kinit / klist 명령으로 티켓 상태 확인</td>
+              <td><span class="result-badge">티켓 정상 발급</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="alert info">
+        <div class="alert-icon">📋</div>
+        <div class="alert-body">
+          <strong>관리 UI 추가 개발 시 참고</strong>
+          기본 CLI 운영은 <strong>samba-tool</strong>로 시작하고, 필요 기능이 명확해지면 <strong>python-ldap3</strong> 기반 REST API + React 포털을 단계적으로 개발하는 것을 권장합니다. 초기부터 풀 UI를 개발하면 불필요한 기능을 만드는 낭비가 생깁니다.
+        </div>
+      </div>
+    </section>
+
+    <!-- S7. DNS 설정 -->
+    <section id="s7">
+      <h2 class="section-title"><span class="num">7</span>DNS 설정</h2>
+
+      <p>Active Directory는 DNS에 강하게 의존합니다. 도메인 조인, Kerberos 인증, LDAP 서비스 탐색 모두 DNS SRV 레코드를 통해 동작하므로 DNS 설정이 잘못되면 AD 전체가 동작하지 않습니다.</p>
+
+      <div class="alert-box info">
+        <div class="alert-icon">ℹ️</div>
+        <div class="alert-body">
+          <strong>AD가 DNS에 의존하는 이유</strong>
+          Windows PC나 Linux 서버가 도메인에 조인할 때 가장 먼저 <code>_ldap._tcp.TEST.LOCAL</code> SRV 레코드를 조회합니다. 이 레코드가 없거나 응답하지 않으면 도메인 조인 자체가 불가능합니다.
+        </div>
+      </div>
+
+      <h3>Samba Internal DNS vs BIND9 비교</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>항목</th><th>Samba Internal DNS</th><th>BIND9 DLZ 백엔드</th></tr></thead>
+          <tbody>
+            <tr><td>설정 난이도</td><td class="ok">쉬움 — 프로비저닝 시 자동 구성</td><td class="partial">복잡 — BIND9 설치 + DLZ 모듈 연동</td></tr>
+            <tr><td>AD SRV 레코드 자동 등록</td><td class="ok">✔ 자동</td><td class="ok">✔ 자동</td></tr>
+            <tr><td>동적 DNS 업데이트 (DDNS)</td><td class="ok">✔ 지원</td><td class="ok">✔ 지원</td></tr>
+            <tr><td>대규모 쿼리 처리</td><td class="partial">△ 수천 대 이상 시 부하 가능</td><td class="ok">✔ 고성능</td></tr>
+            <tr><td>DNS 포워딩 설정</td><td class="ok">smb.conf에서 설정</td><td class="ok">named.conf에서 설정</td></tr>
+            <tr><td>테스트 환경 권장</td><td class="ok">✔ 권장</td><td class="partial">불필요</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>자동 생성되는 SRV 레코드</h3>
+      <p>Samba 4 프로비저닝 완료 시 아래 SRV 레코드가 자동으로 등록됩니다.</p>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="traffic-lights"><span class="tl red"></span><span class="tl yellow"></span><span class="tl green"></span></span>
+          <span class="code-lang">DNS SRV Records</span>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><code>_ldap._tcp.TEST.LOCAL          → dc01.test.local:389   (LDAP)
+_ldap._tcp.dc._msdcs.TEST.LOCAL → dc01.test.local:389   (DC 탐색)
+_kerberos._tcp.TEST.LOCAL      → dc01.test.local:88    (Kerberos)
+_kerberos._udp.TEST.LOCAL      → dc01.test.local:88    (Kerberos UDP)
+_kpasswd._tcp.TEST.LOCAL       → dc01.test.local:464   (패스워드 변경)
+_gc._tcp.TEST.LOCAL            → dc01.test.local:3268  (Global Catalog)</code></pre>
+      </div>
+
+      <h3>DNS 포워더 설정 (인터넷 접근)</h3>
+      <p>테스트 VM이 외부 인터넷 DNS도 해석해야 할 경우 포워더를 설정합니다.</p>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="traffic-lights"><span class="tl red"></span><span class="tl yellow"></span><span class="tl green"></span></span>
+          <span class="code-lang">/etc/samba/smb.conf</span>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><code>[global]
+    # ... 기존 설정 ...
+    dns forwarder = 8.8.8.8 8.8.4.4   # Google DNS 포워더
+    # 또는 사내 DNS 서버 IP로 변경</code></pre>
+      </div>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="traffic-lights"><span class="tl red"></span><span class="tl yellow"></span><span class="tl green"></span></span>
+          <span class="code-lang">bash</span>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><code># smb.conf 수정 후 적용
+smbcontrol all reload-config
+
+# 포워더 동작 확인 (외부 도메인이 해석되어야 함)
+host google.com 127.0.0.1</code></pre>
+      </div>
+
+      <h3>클라이언트 DNS 설정</h3>
+      <div class="card-grid two">
+        <div class="card">
+          <h4>Windows PC</h4>
+          <ol>
+            <li>네트워크 어댑터 속성 → IPv4 설정</li>
+            <li>기본 설정 DNS: <span class="inline-code">192.168.1.100</span> (VM IP)</li>
+            <li>보조 DNS: 비워두거나 포워더로 설정한 외부 DNS</li>
+            <li>설정 후 <span class="inline-code">nslookup TEST.LOCAL</span> 로 확인</li>
+          </ol>
+        </div>
+        <div class="card">
+          <h4>Linux 서버</h4>
+          <div class="code-block" style="margin-top:8px">
+            <div class="code-header">
+              <span class="traffic-lights"><span class="tl red"></span><span class="tl yellow"></span><span class="tl green"></span></span>
+              <span class="code-lang">/etc/resolv.conf</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code>nameserver 192.168.1.100   # Samba DC
+search TEST.LOCAL</code></pre>
+          </div>
+          <p style="font-size:13px;color:var(--text-muted);margin-top:8px">systemd-resolved 사용 시 <span class="inline-code">/etc/systemd/resolved.conf</span> 에서 DNS= 설정</p>
+        </div>
+      </div>
+
+      <h3>DNS 동작 검증</h3>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="traffic-lights"><span class="tl red"></span><span class="tl yellow"></span><span class="tl green"></span></span>
+          <span class="code-lang">bash — DC 서버에서 실행</span>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><code># SRV 레코드 확인 (가장 중요)
+host -t SRV _ldap._tcp.test.local 127.0.0.1
+host -t SRV _kerberos._tcp.test.local 127.0.0.1
+
+# A 레코드 확인
+host dc01.test.local 127.0.0.1
+
+# 역방향 조회 확인
+host 192.168.1.100 127.0.0.1
+
+# 전체 DNS 레코드 목록 조회
+samba-tool dns query 127.0.0.1 TEST.LOCAL @ ALL -U Administrator
+
+# 클라이언트에서 확인 (Windows)
+nslookup -type=SRV _ldap._tcp.TEST.LOCAL
+nslookup -type=SRV _kerberos._tcp.TEST.LOCAL</code></pre>
+      </div>
+
+      <div class="alert-box warn">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-body">
+          <strong>자주 발생하는 DNS 문제</strong>
+          <ul style="margin-top:8px;padding-left:20px">
+            <li><strong>systemd-resolved 충돌</strong> — 포트 53 선점으로 Samba DNS가 시작 안 됨. <span class="inline-code">systemctl disable --now systemd-resolved</span> 필수</li>
+            <li><strong>Windows PC DNS 설정 미변경</strong> — 도메인 조인 시 "도메인을 찾을 수 없음" 오류의 90%가 이 원인</li>
+            <li><strong>역방향 조회 존(PTR) 미생성</strong> — Kerberos 인증 실패의 원인이 될 수 있음. samba-tool dns 로 수동 추가 가능</li>
+          </ul>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- S8. 기본 객체 초기화 -->
+    <section id="s8">
+      <h2 class="section-title"><span class="num">8</span>기본 객체 초기화</h2>
+
+      <p>Windows AD 도메인 프로비저닝 시 자동 생성되는 기본 객체 목록과, Samba 4가 동일하게 생성하는 항목을 정리합니다. 프로비저닝 후 조직 구조(OU/그룹)를 자동으로 세팅하는 초기화 스크립트도 함께 제공합니다.</p>
+
+      <h3>Samba 4 프로비저닝 시 자동 생성 객체</h3>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>컨테이너/OU</th><th>설명</th><th>Windows AD 동일 여부</th></tr></thead>
+          <tbody>
+            <tr><td>CN=Builtin</td><td>내장 보안 그룹 컨테이너 (Administrators, Users 등)</td><td class="ok">✔ 동일</td></tr>
+            <tr><td>CN=Computers</td><td>도메인 조인 컴퓨터 계정 기본 위치</td><td class="ok">✔ 동일</td></tr>
+            <tr><td>OU=Domain Controllers</td><td>DC 컴퓨터 계정</td><td class="ok">✔ 동일</td></tr>
+            <tr><td>CN=Users</td><td>기본 사용자 및 도메인 그룹 컨테이너</td><td class="ok">✔ 동일</td></tr>
+            <tr><td>CN=ForeignSecurityPrincipals</td><td>외부 포레스트 보안 주체</td><td class="ok">✔ 동일</td></tr>
+            <tr><td>CN=Managed Service Accounts</td><td>관리 서비스 계정 컨테이너</td><td class="ok">✔ 동일</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>기본 사용자 계정 (CN=Users)</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>계정명</th><th>설명</th><th>기본 상태</th><th>Samba 4</th></tr></thead>
+          <tbody>
+            <tr><td>Administrator</td><td>도메인 관리자. 모든 권한 보유</td><td><span class="tag green">활성</span></td><td class="ok">✔ 자동 생성</td></tr>
+            <tr><td>Guest</td><td>익명 접근용 계정</td><td><span class="tag gray">비활성</span></td><td class="ok">✔ 자동 생성</td></tr>
+            <tr><td>krbtgt</td><td>Kerberos 티켓 발급 서비스 계정. 절대 활성화 금지</td><td><span class="tag gray">비활성</span></td><td class="ok">✔ 자동 생성</td></tr>
+            <tr><td>DefaultAccount</td><td>시스템 관리 계정 (Windows 10+ 도메인)</td><td><span class="tag gray">비활성</span></td><td class="partial">△ 미생성 (불필요)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>기본 Built-in 그룹 (CN=Builtin)</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>그룹명</th><th>주요 권한</th><th>Samba 4</th></tr></thead>
+          <tbody>
+            <tr><td>Administrators</td><td>도메인/로컬 시스템 완전 제어</td><td class="ok">✔</td></tr>
+            <tr><td>Users</td><td>일반 도메인 사용자 기본 그룹</td><td class="ok">✔</td></tr>
+            <tr><td>Guests</td><td>제한적 임시 접근</td><td class="ok">✔</td></tr>
+            <tr><td>Backup Operators</td><td>백업/복원 권한, 로그온 가능</td><td class="ok">✔</td></tr>
+            <tr><td>Print Operators</td><td>프린터 관리, DC 로그온</td><td class="ok">✔</td></tr>
+            <tr><td>Server Operators</td><td>서버 공유/서비스/셧다운 관리</td><td class="ok">✔</td></tr>
+            <tr><td>Account Operators</td><td>사용자·그룹 계정 생성/수정 (제한적)</td><td class="ok">✔</td></tr>
+            <tr><td>Remote Desktop Users</td><td>RDP 접근 허용</td><td class="ok">✔</td></tr>
+            <tr><td>Network Configuration Operators</td><td>네트워크 설정 변경</td><td class="ok">✔</td></tr>
+            <tr><td>Performance Monitor Users</td><td>성능 카운터 원격 조회</td><td class="ok">✔</td></tr>
+            <tr><td>Event Log Readers</td><td>이벤트 로그 원격 읽기</td><td class="ok">✔</td></tr>
+            <tr><td>Remote Management Users</td><td>WMI/WinRM 원격 관리</td><td class="ok">✔</td></tr>
+            <tr><td>Hyper-V Administrators</td><td>Hyper-V 완전 제어</td><td class="partial">△ 생성되나 기능 없음</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>기본 Domain 그룹 (CN=Users)</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>그룹명</th><th>설명</th><th>Samba 4</th></tr></thead>
+          <tbody>
+            <tr><td>Domain Admins</td><td>도메인 관리자. Administrator의 주 소속 그룹</td><td class="ok">✔</td></tr>
+            <tr><td>Domain Users</td><td>모든 도메인 계정의 기본 소속 그룹</td><td class="ok">✔</td></tr>
+            <tr><td>Domain Guests</td><td>Guest 계정 기본 소속 그룹</td><td class="ok">✔</td></tr>
+            <tr><td>Domain Computers</td><td>도메인 조인한 모든 컴퓨터</td><td class="ok">✔</td></tr>
+            <tr><td>Domain Controllers</td><td>도메인의 모든 DC</td><td class="ok">✔</td></tr>
+            <tr><td>Schema Admins</td><td>AD 스키마 변경 권한 (포레스트 단위)</td><td class="ok">✔</td></tr>
+            <tr><td>Enterprise Admins</td><td>포레스트 전체 관리 권한</td><td class="ok">✔</td></tr>
+            <tr><td>Group Policy Creator Owners</td><td>GPO 생성/수정 권한</td><td class="ok">✔</td></tr>
+            <tr><td>Read-only Domain Controllers</td><td>RODC 계정 그룹</td><td class="ok">✔</td></tr>
+            <tr><td>Protected Users</td><td>강화된 자격 증명 보호 (2016+)</td><td class="partial">△ 생성되나 기능 제한</td></tr>
+            <tr><td>DnsAdmins</td><td>DNS 서버 관리</td><td class="ok">✔</td></tr>
+            <tr><td>Allowed RODC Password Replication Group</td><td>RODC 패스워드 캐시 허용 목록</td><td class="ok">✔</td></tr>
+            <tr><td>Denied RODC Password Replication Group</td><td>RODC 패스워드 캐시 차단 목록 (기본: Domain Admins 등 포함)</td><td class="ok">✔</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>조직 구조 초기화 스크립트</h3>
+      <p>프로비저닝 후 실제 사용할 OU/그룹 구조를 자동으로 세팅하는 스크립트입니다.</p>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="traffic-lights"><span class="tl red"></span><span class="tl yellow"></span><span class="tl green"></span></span>
+          <span class="code-lang">init_ad_structure.py</span>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><code>#!/usr/bin/env python3
+"""
+Samba 4 AD 조직 구조 초기화 스크립트
+프로비저닝 직후 1회 실행 — OU, 그룹, 기본 정책 세팅
+사용법: python3 init_ad_structure.py
+"""
+import subprocess, sys
+
+DOMAIN   = "TEST"
+REALM    = "TEST.LOCAL"
+BASE_DN  = "DC=TEST,DC=LOCAL"
+ADMIN_PW = "Admin@Test1234!"
+
+def run(cmd, check=True):
+    r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    if check and r.returncode != 0:
+        print(f"  [WARN] {r.stderr.strip()}")
+    return r.returncode == 0
+
+def samba(subcmd):
+    return run(f'samba-tool {subcmd} -U Administrator --password="{ADMIN_PW}"')
+
+# ── 1. 조직 OU 생성 ──────────────────────────────────────────
+OUS = [
+    ("개발팀",     "OU=개발팀"),
+    ("마케팅팀",   "OU=마케팅팀"),
+    ("인사팀",     "OU=인사팀"),
+    ("영업팀",     "OU=영업팀"),
+    ("IT인프라팀", "OU=IT인프라팀"),
+    ("서버",       "OU=서버"),       # 서버 컴퓨터 계정용
+]
+print("[1/4] OU 생성")
+for name, ou_rdn in OUS:
+    samba(f'ou create "{ou_rdn},{BASE_DN}"')
+    print(f"  OU: {name}")
+
+# ── 2. 부서 그룹 생성 ─────────────────────────────────────────
+GROUPS = [
+    ("개발팀",         "OU=개발팀"),
+    ("마케팅팀",       "OU=마케팅팀"),
+    ("인사팀",         "OU=인사팀"),
+    ("영업팀",         "OU=영업팀"),
+    ("IT인프라팀",     "OU=IT인프라팀"),
+    ("서버관리자",     "OU=IT인프라팀"),  # Linux sudo 권한용
+    ("파일공유_읽기",  "OU=IT인프라팀"),
+    ("파일공유_쓰기",  "OU=IT인프라팀"),
+]
+print("[2/4] 그룹 생성")
+for grp, ou_rdn in GROUPS:
+    samba(f'group add "{grp}" --groupou="{ou_rdn},{BASE_DN}"')
+    print(f"  그룹: {grp}")
+
+# ── 3. 패스워드 정책 설정 ────────────────────────────────────
+print("[3/4] 도메인 패스워드 정책 적용")
+samba('domain passwordsettings set --min-pwd-length=8')
+samba('domain passwordsettings set --complexity=on')
+samba('domain passwordsettings set --max-pwd-age=90')
+samba('domain passwordsettings set --account-lockout-threshold=5')
+samba('domain passwordsettings set --account-lockout-duration=30')
+print("  완료")
+
+# ── 4. 검증 ─────────────────────────────────────────────────
+print("[4/4] 검증")
+run(f'samba-tool ou list -U Administrator --password="{ADMIN_PW}"')
+run(f'samba-tool group list -U Administrator --password="{ADMIN_PW}"')
+print("\n초기화 완료.")
+</code></pre>
+      </div>
+
+      <div class="alert-box info">
+        <div class="alert-icon">ℹ️</div>
+        <div class="alert-body">
+          <strong>실행 순서</strong>
+          Phase 1 (Samba 프로비저닝) 완료 후 바로 이 스크립트를 실행합니다. 이후 Phase 5 대량 계정 생성 스크립트에서 <code>--userou</code> 옵션으로 각 계정을 적절한 OU에 배치할 수 있습니다.
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+</div>
+
+<script>
+  /* ── Copy button ── */
+  function copyCode(btn) {
+    const pre = btn.closest('.code-block').querySelector('pre');
+    const text = pre.innerText || pre.textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = 'Copy';
+        btn.classList.remove('copied');
+      }, 2000);
+    }).catch(() => {
+      btn.textContent = 'Error';
+      setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+    });
+  }
+
+  /* ── IntersectionObserver: section fade-in + sidebar active ── */
+  const sections  = document.querySelectorAll('section[id]');
+  const navItems  = document.querySelectorAll('.nav-item[data-target]');
+
+  // Sidebar click scroll
+  navItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      const target = document.getElementById(item.dataset.target);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  // Fade-in observer
+  const fadeObs = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        fadeObs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.05 });
+
+  sections.forEach(s => fadeObs.observe(s));
+
+  // Active nav observer
+  const activeObs = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        navItems.forEach(item => {
+          item.classList.toggle('active', item.dataset.target === id);
+        });
+      }
+    });
+  }, { rootMargin: '-10% 0px -80% 0px', threshold: 0 });
+
+  sections.forEach(s => activeObs.observe(s));
+</script>
+
+</body>
+</html>

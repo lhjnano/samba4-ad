@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>정책(GPO) — AD Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--bg-root:#0d1117;--bg-card:#161b22;--bg-sidebar:#1c2128;--bg-input:#0d1117;--bg-hover:#21262d;--bg-active:#1f3244;--border:#30363d;--border-subtle:#21262d;--text-primary:#e6edf3;--text-secondary:#8b949e;--text-muted:#484f58;--accent-blue:#3b82f6;--accent-green:#10b981;--accent-yellow:#f59e0b;--accent-red:#ef4444;--accent-purple:#7c3aed;--radius-sm:6px;--radius-md:8px;--radius-lg:12px}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Inter',-apple-system,sans-serif;font-size:14px;line-height:1.5;color:var(--text-primary);background:var(--bg-root)}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.app{display:grid;grid-template-areas:"topbar topbar" "sidebar main";grid-template-rows:56px 1fr;grid-template-columns:220px 1fr;height:100vh}
+.topbar{grid-area:topbar;display:flex;align-items:center;gap:16px;padding:0 16px;background:var(--bg-card);border-bottom:1px solid var(--border);z-index:100}
+.logo-icon{width:28px;height:28px;background:var(--accent-blue);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center}.logo-icon svg{width:16px;height:16px;color:#fff}
+.logo-text{font-size:13px;font-weight:700}
+.domain-pill{display:flex;align-items:center;gap:6px;padding:4px 10px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:20px}
+.domain-dot{width:7px;height:7px;border-radius:50%;background:var(--accent-green);box-shadow:0 0 6px var(--accent-green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.domain-name{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--accent-green)}
+.search-wrap{flex:1;display:flex;align-items:center;max-width:380px;margin:0 auto;position:relative}.search-wrap svg{position:absolute;left:10px;width:14px;height:14px;color:var(--text-muted)}
+.search-input{width:100%;padding:6px 10px 6px 32px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:13px;outline:none}.search-input:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(59,130,246,0.15)}
+.topbar-right{display:flex;align-items:center;gap:12px;margin-left:auto}
+.notif-btn{position:relative;width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:var(--radius-sm);color:var(--text-secondary);cursor:pointer}.notif-btn svg{width:18px;height:18px}
+.notif-badge{position:absolute;top:2px;right:2px;width:16px;height:16px;background:var(--accent-red);border-radius:8px;font-size:10px;font-weight:600;color:#fff;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg-card)}
+.profile{display:flex;align-items:center;gap:8px;cursor:pointer}.profile-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--accent-blue),#1d4ed8);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff}.profile-name{font-size:13px}
+.sidebar{grid-area:sidebar;background:var(--bg-sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.sidebar-section{padding:16px 0 4px}.sidebar-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);padding:0 16px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 16px;font-size:13px;color:var(--text-secondary);cursor:pointer;position:relative;transition:.15s;text-decoration:none}.nav-item svg{width:16px;height:16px;flex-shrink:0}.nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.nav-item.active{background:var(--bg-active);color:var(--accent-blue);font-weight:500}.nav-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:18px;background:var(--accent-blue);border-radius:0 3px 3px 0}
+.sidebar-spacer{flex:1}
+.main{grid-area:main;overflow-y:auto;padding:20px 24px}
+.breadcrumb{font-size:12px;color:var(--text-muted);margin-bottom:4px}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.page-title{font-size:18px;font-weight:700;letter-spacing:-0.03em}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;transition:.15s;border:none;text-decoration:none}.btn svg{width:14px;height:14px}
+.btn-primary{background:var(--accent-blue);color:#fff}.btn-primary:hover{background:#2563eb}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text-secondary)}.btn-outline:hover{background:var(--bg-hover);color:var(--text-primary)}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+.stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;position:relative;overflow:hidden}.stat-stripe{position:absolute;top:0;right:0;width:3px;height:100%}
+.stat-label{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-secondary);margin-bottom:10px}.stat-value{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;line-height:1}.stat-sub{font-size:12px;color:var(--text-muted);margin-top:8px}
+.gpo-layout{display:grid;grid-template-columns:1fr 400px;gap:16px}
+.filter-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.filter-search{flex:1;min-width:200px;max-width:320px;position:relative}.filter-search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--text-muted)}
+.filter-search input{width:100%;padding:7px 10px 7px 32px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:13px;outline:none}.filter-search input:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(59,130,246,0.15)}
+.custom-select{position:relative}.custom-select select{appearance:none;padding:7px 32px 7px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:13px;cursor:pointer;outline:none;font-family:inherit}
+.custom-select::after{content:'';position:absolute;right:12px;top:50%;transform:translateY(-50%);border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid var(--text-secondary);pointer-events:none}
+.gpo-list{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.gpo-item{display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid var(--border-subtle);cursor:pointer;transition:.15s}
+.gpo-item:last-child{border-bottom:none}
+.gpo-item:hover{background:var(--bg-hover)}
+.gpo-item.active{background:var(--bg-active);border-left:3px solid var(--accent-blue)}
+.gpo-icon{width:36px;height:36px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.gpo-icon svg{width:18px;height:18px}
+.gpo-info{flex:1;min-width:0}
+.gpo-name{font-size:13.5px;font-weight:600}
+.gpo-desc{font-size:12px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gpo-meta{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.status-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500;white-space:nowrap}
+.status-enabled{background:rgba(16,185,129,0.12);color:var(--accent-green)}.status-disabled{background:rgba(239,68,68,0.12);color:var(--accent-red)}.status-all{background:rgba(139,148,158,0.12);color:var(--text-secondary)}
+.link-count{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted)}
+.gpo-detail{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);display:flex;flex-direction:column;overflow:hidden;position:sticky;top:0;max-height:calc(100vh - 200px)}
+.detail-header{padding:18px;border-bottom:1px solid var(--border)}
+.detail-header-top{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.detail-icon{width:40px;height:40px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;flex-shrink:0}.detail-icon svg{width:22px;height:22px}
+.detail-title{font-size:16px;font-weight:700;letter-spacing:-0.02em}
+.detail-id{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted)}
+.detail-body{flex:1;overflow-y:auto;padding:18px}
+.section-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:12px;margin-top:20px}.section-label:first-child{margin-top:0}
+.info-row{display:grid;grid-template-columns:110px 1fr;gap:12px;padding:7px 0;border-bottom:1px solid var(--border-subtle)}.info-row:last-child{border-bottom:none}
+.info-label{font-size:12px;color:var(--text-muted)}.info-value{font-size:13px}.info-value.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
+.link-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);margin-bottom:6px;font-size:12.5px}
+.link-item svg{width:14px;height:14px;color:var(--accent-blue);flex-shrink:0}
+.link-enforced{font-size:10px;padding:1px 6px;border-radius:3px;margin-left:auto}.link-enforced.yes{background:rgba(245,158,11,0.12);color:var(--accent-yellow)}.link-enforced.no{background:rgba(139,148,158,0.12);color:var(--text-muted)}
+.policy-setting{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-subtle);font-size:12.5px}
+.policy-setting:last-child{border-bottom:none}
+.policy-name{flex:1}
+.policy-value{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent-green)}
+.detail-footer{padding:14px 18px;border-top:1px solid var(--border);display:flex;gap:8px}
+.detail-footer .btn{flex:1;justify-content:center}
+@media(max-width:1200px){.stats-row{grid-template-columns:repeat(2,1fr)}.gpo-layout{grid-template-columns:1fr}}
+@media(max-width:900px){.app{grid-template-columns:56px 1fr}.sidebar-label,.nav-item span{display:none}.nav-item{justify-content:center}.domain-pill .domain-name,.profile-name{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="topbar">
+<div style="display:flex;align-items:center;gap:8px"><div class="logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><span class="logo-text">AD Manager</span></div>
+<div class="domain-pill"><span class="domain-dot"></span><span class="domain-name">TEST.LOCAL</span></div>
+<div class="search-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input class="search-input" placeholder="사용자, 그룹, 디바이스 검색..."></div>
+<div class="topbar-right"><button class="notif-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="notif-badge">3</span></button><div class="profile"><div class="profile-avatar">AD</div><span class="profile-name">관리자</span></div></div>
+</div>
+<div class="sidebar">
+<div class="sidebar-section"><div class="sidebar-label">메인</div>
+<a class="nav-item" href="01-dashboard.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>대시보드</span></a>
+<a class="nav-item" href="02-users.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>사용자 관리</span></a>
+<a class="nav-item" href="03-groups.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg><span>그룹 관리</span></a>
+<a class="nav-item" href="04-ou.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg><span>OU 관리</span></a>
+<a class="nav-item" href="05-domain-join.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg><span>도메인 조인 현황</span></a>
+</div>
+<div class="sidebar-section"><div class="sidebar-label">관리</div>
+<a class="nav-item active" href="06-gpo.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span>정책(GPO)</span></a>
+</div>
+<div class="sidebar-spacer"></div>
+<div class="sidebar-section"><a class="nav-item" href="07-settings.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>설정</span></a></div>
+</div>
+<div class="main">
+<div class="breadcrumb">홈 › 정책(GPO)</div>
+<div class="page-header"><h1 class="page-title">정책(GPO)</h1>
+<div style="display:flex;gap:8px"><button class="btn btn-outline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>백업</button><button class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>GPO 생성</button></div>
+</div>
+<div class="stats-row">
+<div class="stat-card"><div class="stat-stripe" style="background:var(--accent-blue)"></div><div class="stat-label">전체 GPO</div><div class="stat-value">24</div><div class="stat-sub">그룹 정책 객체</div></div>
+<div class="stat-card"><div class="stat-stripe" style="background:var(--accent-green)"></div><div class="stat-label">활성 GPO</div><div class="stat-value">21</div><div class="stat-sub">적용 중</div></div>
+<div class="stat-card"><div class="stat-stripe" style="background:var(--accent-yellow)"></div><div class="stat-label">강제 적용</div><div class="stat-value">5</div><div class="stat-sub">Enforced 링크</div></div>
+<div class="stat-card"><div class="stat-stripe" style="background:var(--accent-red)"></div><div class="stat-label">비활성</div><div class="stat-value">3</div><div class="stat-sub">사용 안 함</div></div>
+</div>
+<div class="gpo-layout">
+<div>
+<div class="filter-bar">
+<div class="filter-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input placeholder="GPO 이름 검색..."></div>
+<div class="custom-select"><select><option>전체 상태</option><option>활성</option><option>비활성</option></select></div>
+<div class="custom-select"><select><option>전체 카테고리</option><option>보안</option><option>비밀번호</option><option>스크립트</option><option>드라이브 매핑</option></select></div>
+</div>
+<div class="gpo-list" id="gpoList"></div>
+</div>
+<div class="gpo-detail" id="gpoDetail">
+<div class="detail-header">
+<div class="detail-header-top">
+<div class="detail-icon" id="dIcon" style="background:rgba(245,158,11,0.12)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent-yellow)"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+<div><div class="detail-title" id="dTitle">도메인 보안 정책</div><div class="detail-id" id="dId">{31B2F340-016D-11D2-945F-00C04FB984F9}</div></div>
+</div>
+</div>
+<div class="detail-body" id="dBody">
+<div class="section-label">기본 정보</div>
+<div class="info-row"><span class="info-label">이름</span><span class="info-value" id="i-name">도메인 보안 정책</span></div>
+<div class="info-row"><span class="info-label">상태</span><span class="info-value"><span class="status-badge status-enabled"><span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block"></span>활성</span></span></div>
+<div class="info-row"><span class="info-label">생성일</span><span class="info-value mono">2024-01-15 09:30:00</span></div>
+<div class="info-row"><span class="info-label">수정일</span><span class="info-value mono">2026-06-10 14:22:31</span></div>
+<div class="info-row"><span class="info-label">버전</span><span class="info-value mono">User: 12 / Computer: 15</span></div>
+<div class="info-row"><span class="info-label">WMI 필터</span><span class="info-value">없음</span></div>
+<div class="section-label">연결된 OU</div>
+<div id="dLinks"></div>
+<div class="section-label">주요 설정</div>
+<div class="policy-setting"><span class="policy-name">최소 비밀번호 길이</span><span class="policy-value">12자</span></div>
+<div class="policy-setting"><span class="policy-name">비밀번호 복잡성</span><span class="policy-value">필수</span></div>
+<div class="policy-setting"><span class="policy-name">계정 잠금 임계값</span><span class="policy-value">5회</span></div>
+<div class="policy-setting"><span class="policy-name">비밀번호 최대 사용 기간</span><span class="policy-value">90일</span></div>
+<div class="policy-setting"><span class="policy-name">로그인 실패 감사</span><span class="policy-value">성공+실패</span></div>
+</div>
+<div class="detail-footer">
+<button class="btn btn-outline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>편집</button>
+<button class="btn btn-outline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>링크 관리</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+const gpoShield='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>';
+const gpoLock='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+const gpoScript='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>';
+const gpoFolder='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>';
+const gpoSettings='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m11-7h-6m-6 0H1m16.5-5.5L13 9m-2 6l-4.5 4.5M18.5 18.5L14 14M10 10L5.5 5.5"/></svg>';
+const gpoIcon=gpoLock;
+const ouLinkIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
+const gpos=[
+{name:'도메인 보안 정책',desc:'비밀번호 정책, 계정 잠금, 감사 정책',icon:gpoLock,color:'#f59e0b',bg:'rgba(245,158,11,0.12)',status:'enabled',links:5,id:'{31B2F340-016D-11D2-945F-00C04FB984F9}',linkData:[{ou:'DC=TEST,DC=LOCAL',enforced:true},{ou:'OU=개발팀',enforced:false},{ou:'OU=IT인프라팀',enforced:true}],settings:[{n:'최소 비밀번호 길이',v:'12자'},{n:'비밀번호 복잡성',v:'필수'},{n:'계정 잠금 임계값',v:'5회'}]},
+{name:'Default Domain Policy',desc:'기본 도메인 정책 (시스템)',icon:gpoShield,color:'#10b981',bg:'rgba(16,185,129,0.12)',status:'enabled',links:1,id:'{31B2F340-016D-11D2-945F-00C04FB984F9}',linkData:[{ou:'DC=TEST,DC=LOCAL',enforced:false}],settings:[{n:'비밀번호 최대 사용 기간',v:'90일'},{n:'Kerberos 정책',v:'기본값'}]},
+{name:'개발팀 보안 정책',desc:'개발팀 전용 보안 설정',icon:gpoLock,color:'#f59e0b',bg:'rgba(245,158,11,0.12)',status:'enabled',links:2,id:'{A3C2B580-1D4E-4F2A-9B1C-5E6F7890ABCD}',linkData:[{ou:'OU=개발팀',enforced:true},{ou:'OU=프론트엔드',enforced:false}],settings:[{n:'방화벽 프로필',v:'도메인 활성'},{n:'RDP 접속',v:'허용'}]},
+{name:'로그온 스크립트',desc:'시작 스크립트 및 드라이브 매핑',icon:gpoScript,color:'#3b82f6',bg:'rgba(59,130,246,0.12)',status:'enabled',links:6,id:'{B4D3C690-2E5F-4A3B-AC2D-6F708901BCDE}',linkData:[{ou:'DC=TEST,DC=LOCAL',enforced:false},{ou:'OU=개발팀',enforced:false},{ou:'OU=마케팅팀',enforced:false}],settings:[{n:'로그온 스크립트',v:'map_drives.bat'},{n:'네트워크 드라이브',v:'H:, P:'}]},
+{name:'드라이브 매핑',desc:'부서별 네트워크 드라이브 자동 연결',icon:gpoFolder,color:'#7c3aed',bg:'rgba(124,58,237,0.12)',status:'enabled',links:4,id:'{C5E4D700-3F6A-4B4C-BD3E-70819012CDEF}',linkData:[{ou:'OU=개발팀',enforced:false},{ou:'OU=마케팅팀',enforced:false}],settings:[{n:'드라이브 H:',v:'\\ \\srv-file\home'},{n:'드라이브 P:',v:'\\ \\srv-file\public'}]},
+{name:'Windows 방화벽 정책',desc:'도메인 방화벽 규칙 관리',icon:gpoShield,color:'#10b981',bg:'rgba(16,185,129,0.12)',status:'enabled',links:3,id:'{D6F5E810-4A7B-4C5D-CE4F-81920123DEF0}',linkData:[{ou:'DC=TEST,DC=LOCAL',enforced:true}],settings:[{n:'도메인 프로필',v:'활성'},{n:'인바운드 기본',v:'차단'}]},
+{name:'화면 보호기 정책',desc:'유휴 시간 화면 보호기 및 잠금',icon:gpoSettings,color:'#8b949e',bg:'rgba(139,148,158,0.12)',status:'disabled',links:2,id:'{E706F920-5B8C-4D6E-DF5A-92012340EF01}',linkData:[{ou:'DC=TEST,DC=LOCAL',enforced:false}],settings:[{n:'화면 보호기 대기',v:'10분'},{n:'잠금 활성화',v:'예'}]},
+{name:'소프트웨어 배포',desc:'MSI 패키지 자동 설치',icon:gpoFolder,color:'#7c3aed',bg:'rgba(124,58,237,0.12)',status:'enabled',links:2,id:'{F8170A30-6C9D-4E7F-E06B-A03124501F12}',linkData:[{ou:'OU=개발팀',enforced:false}],settings:[{n:'설치 패키지',v:'VSCode.msi'},{n:'배포 모드',v:'할당'}]}
+];
+const list=document.getElementById('gpoList');
+const statusMap={enabled:{cls:'status-enabled',label:'활성'},disabled:{cls:'status-disabled',label:'비활성'}};
+gpos.forEach((g,i)=>{
+const st=statusMap[g.status];
+const el=document.createElement('div');
+el.className='gpo-item'+(i===0?' active':'');
+el.dataset.idx=i;
+el.innerHTML=`<div class="gpo-icon" style="background:${g.bg}"><span style="color:${g.color}">${g.icon}</span></div><div class="gpo-info"><div class="gpo-name">${g.name}</div><div class="gpo-desc">${g.desc}</div></div><div class="gpo-meta"><span class="status-badge ${st.cls}"><span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block"></span>${st.label}</span><span class="link-count">${g.links} 링크</span></div>`;
+el.addEventListener('click',()=>selectGPO(i));
+list.appendChild(el);
+});
+function selectGPO(idx){
+const g=gpos[idx];
+document.querySelectorAll('.gpo-item').forEach((el,i)=>el.classList.toggle('active',i===idx));
+const st=statusMap[g.status];
+document.getElementById('dIcon').innerHTML=`<span style="color:${g.color}">${g.icon}</span>`;
+document.getElementById('dIcon').style.background=g.bg;
+document.getElementById('dTitle').textContent=g.name;
+document.getElementById('dId').textContent=g.id;
+document.getElementById('i-name').textContent=g.name;
+const links=document.getElementById('dLinks');
+links.innerHTML=g.linkData.map(l=>`<div class="link-item">${ouLinkIcon}<span style="font-family:'JetBrains Mono',monospace;font-size:11.5px">${l.ou}</span><span class="link-enforced ${l.enforced?'yes':'no'}">${l.enforced?'강제':'상속'}</span></div>`).join('');
+const dBody=document.getElementById('dBody');
+const settingsHtml=g.settings.map(s=>`<div class="policy-setting"><span class="policy-name">${s.n}</span><span class="policy-value">${s.v}</span></div>`).join('');
+dBody.innerHTML=`<div class="section-label">기본 정보</div><div class="info-row"><span class="info-label">이름</span><span class="info-value">${g.name}</span></div><div class="info-row"><span class="info-label">상태</span><span class="info-value"><span class="status-badge ${st.cls}"><span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block"></span>${st.label}</span></span></div><div class="info-row"><span class="info-label">생성일</span><span class="info-value mono">2024-01-15 09:30:00</span></div><div class="info-row"><span class="info-label">수정일</span><span class="info-value mono">2026-06-10 14:22:31</span></div><div class="info-row"><span class="info-label">버전</span><span class="info-value mono">User: ${Math.floor(Math.random()*20)} / Computer: ${Math.floor(Math.random()*20)}</span></div><div class="info-row"><span class="info-label">WMI 필터</span><span class="info-value">없음</span></div><div class="section-label">연결된 OU</div>${links.innerHTML}<div class="section-label">주요 설정</div>${settingsHtml}`;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+# Samba 4 AD Manager — Pre-commit Hooks
+# Install: pip install pre-commit && pre-commit install
+# Manual run: pre-commit run --all-files
+# Skip: git commit --no-verify (emergencies only, CI still validates)
+
+default_language_version:
+  python: python3.11
+
+repos:
+  # ============================================
+  # 1. General checks (all files)
+  # ============================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: check-json
+      - id: check-yaml
+        args: ['--unsafe']
+      - id: check-toml
+      - id: check-xml
+      - id: detect-private-key
+      - id: detect-aws-credentials
+        args: ['--allow-missing-credentials']
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: ['--markdown-linebreak-ext=md']
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+  # ============================================
+  # 2. Commit message validation (Conventional Commits)
+  # ============================================
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.0.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [
+          'feat', 'fix', 'perf', 'refactor',
+          'docs', 'test', 'build', 'ci', 'chore',
+          'feat!', 'fix!',
+        ]
+
+  # ============================================
+  # 3. Secret scanning
+  # ============================================
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: [
+          '--baseline', '.secrets.baseline',
+          '--exclude-files', 'backend/tests/fixtures/',
+          '--exclude-lines', 'EXAMPLE_SECRET',
+        ]
+
+  # ============================================
+  # 4. Python (backend)
+  # ============================================
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.0
+    hooks:
+      - id: ruff
+        args: ['--fix', '--exit-non-zero-on-fix']
+        types_or: [python, pyi]
+      - id: ruff-format
+        types_or: [python, pyi]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - types-PyYAML
+          - types-requests
+          - pydantic
+          - fastapi
+        args: ['--config-file=pyproject.toml']
+        files: '^backend/src/'
+
+  # ============================================
+  # 5. Shell
+  # ============================================
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        args: ['--severity=warning']
+
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.10.0-1
+    hooks:
+      - id: shfmt
+        args: ['--write', '--indent=4', '--case-indent']
+
+  # ============================================
+  # 6. Frontend (when implemented)
+  # ============================================
+  # Uncomment when frontend/ has package.json with eslint/prettier:
+  # - repo: local
+  #   hooks:
+  #     - id: eslint
+  #       name: eslint (frontend)
+  #       entry: bash -c 'cd frontend && npx eslint src/'
+  #       language: system
+  #       types: [file]
+  #       files: '^frontend/.*\.(ts|tsx|js|jsx)$'
+  #       pass_filenames: false
+  #
+  #     - id: prettier
+  #       name: prettier (frontend)
+  #       entry: bash -c 'cd frontend && npx prettier --check src/'
+  #       language: system
+  #       types: [file]
+  #       files: '^frontend/.*\.(ts|tsx|js|jsx|css|json)$'
+  #       pass_filenames: false
+
+  # ============================================
+  # 7. Documentation
+  # ============================================
+  - repo: https://github.com/tcort/markdown-link-check
+    rev: v3.13.3
+    hooks:
+      - id: markdown-link-check
+        args: ['--config', '.markdownlinkcheck.json']
+        files: '\.md$'
+
+# ============================================
+# Global settings
+# ============================================
+ci:
+  autofix_commit_msg: "chore: auto-fix from pre-commit hooks"
+  autofix_prs: false
+  skip: [mypy]
