@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ShieldCheck, Loader2, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
+import { LanguageSwitcher } from "../components/ui/LanguageSwitcher";
 
 export function Login() {
   const { t } = useTranslation();
@@ -28,7 +29,12 @@ export function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-root p-6">
+    <div className="relative flex min-h-screen items-center justify-center bg-root p-6">
+      {/* Language switcher — top right */}
+      <div className="absolute right-6 top-6">
+        <LanguageSwitcher />
+      </div>
+
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="mb-8 text-center">
