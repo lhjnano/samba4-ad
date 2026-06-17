@@ -35,40 +35,42 @@ function AppRoutes() {
     );
   }
 
-  // Not authenticated → Login
+  // Not authenticated → Login (inside BrowserRouter so useNavigate works)
   if (!user) {
-    return <Login />;
+    return (
+      <Routes>
+        <Route path="*" element={<Login />} />
+      </Routes>
+    );
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route element={<AppShell />}>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/users" element={<Users />} />
-          <Route path="/groups" element={<Groups />} />
-          <Route path="/computers" element={<Computers />} />
-          <Route path="/ous" element={<OUs />} />
-          <Route path="/gpos" element={<GPOs />} />
-          <Route path="/dns" element={<DNS />} />
-          <Route path="/policies" element={<Policies />} />
-          <Route path="/logs" element={<Logs />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route
-            path="*"
-            element={
-              <div className="p-8 text-secondary">
-                Page not found.{" "}
-                <a href="/dashboard" className="text-blue">
-                  Go to Dashboard
-                </a>
-              </div>
-            }
-          />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <Routes>
+      <Route element={<AppShell />}>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/users" element={<Users />} />
+        <Route path="/groups" element={<Groups />} />
+        <Route path="/computers" element={<Computers />} />
+        <Route path="/ous" element={<OUs />} />
+        <Route path="/gpos" element={<GPOs />} />
+        <Route path="/dns" element={<DNS />} />
+        <Route path="/policies" element={<Policies />} />
+        <Route path="/logs" element={<Logs />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route
+          path="*"
+          element={
+            <div className="p-8 text-secondary">
+              Page not found.{" "}
+              <a href="/dashboard" className="text-blue">
+                Go to Dashboard
+              </a>
+            </div>
+          }
+        />
+      </Route>
+    </Routes>
   );
 }
 
@@ -102,9 +104,11 @@ export default function App() {
   // Provisioned → Auth gate → Main app
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }
