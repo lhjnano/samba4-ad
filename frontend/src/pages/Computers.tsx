@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Search,
   Download,
@@ -58,20 +59,25 @@ function csvCell(v: unknown): string {
   return s;
 }
 
-function exportComputersCsv(rows: ADComputer[]) {
+function exportComputersCsv(
+  rows: ADComputer[],
+  t: (key: string, opts?: Record<string, unknown>) => string,
+) {
   const header = [
-    "호스트명",
-    "운영체제",
-    "OU",
-    "상태",
-    "최근 로그인",
-    "IP 주소",
+    t("computers:csv_header_hostname"),
+    t("computers:csv_header_os"),
+    t("computers:csv_header_ou"),
+    t("computers:csv_header_status"),
+    t("computers:csv_header_last_logon"),
+    t("computers:csv_header_ip"),
   ];
   const lines = rows.map((c) => [
     c.hostname,
     c.os,
     c.ou,
-    c.enabled ? "활성" : "비활성",
+    c.enabled
+      ? t("computers:csv_status_active")
+      : t("computers:csv_status_inactive"),
     c.last_logon ?? "",
     c.ip_address ?? "",
   ]);
@@ -91,6 +97,8 @@ function exportComputersCsv(rows: ADComputer[]) {
 
 // ── Page ───────────────────────────────────────────
 export function Computers() {
+  const { t } = useTranslation();
+
   // List state
   const [computers, setComputers] = useState<ADComputer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -116,11 +124,11 @@ export function Computers() {
 
   // ── Debounced search ─────────────────────────────
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setDebouncedSearch(search.trim());
       setPage(1);
     }, 350);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [search]);
 
   // ── Fetch list ───────────────────────────────────
@@ -143,12 +151,12 @@ export function Computers() {
     } catch (err) {
       setError(
         (err as { message?: string })?.message ??
-          "컴퓨터 목록을 불러오지 못했습니다",
+          t("computers:error_load_list"),
       );
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch]);
+  }, [page, debouncedSearch, t]);
 
   useEffect(() => {
     fetchComputers();
@@ -171,8 +179,8 @@ export function Computers() {
   // ── Auto-dismiss toast ───────────────────────────
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timer);
   }, [toast]);
 
   // ── Detail ───────────────────────────────────────
@@ -189,7 +197,7 @@ export function Computers() {
     } catch (err) {
       setDetailError(
         (err as { message?: string })?.message ??
-          "컴퓨터 정보를 불러오지 못했습니다",
+          t("computers:error_load_detail"),
       );
     } finally {
       setDetailLoading(false);
@@ -205,14 +213,14 @@ export function Computers() {
   // ── Export ───────────────────────────────────────
   function handleExport() {
     if (!visibleComputers.length) {
-      setToast({ type: "error", message: "내보낼 컴퓨터가 없습니다" });
+      setToast({ type: "error", message: t("computers:toast_nothing_to_export") });
       return;
     }
     try {
-      exportComputersCsv(visibleComputers);
-      setToast({ type: "success", message: "CSV 내보내기 완료" });
+      exportComputersCsv(visibleComputers, t);
+      setToast({ type: "success", message: t("computers:toast_csv_export_done") });
     } catch {
-      setToast({ type: "error", message: "내보내기에 실패했습니다" });
+      setToast({ type: "error", message: t("computers:toast_export_failed") });
     }
   }
 
@@ -220,7 +228,7 @@ export function Computers() {
   const columns = [
     {
       key: "hostname",
-      header: "호스트명",
+      header: t("computers:th_hostname"),
       render: (c: ADComputer) => (
         <div className="flex items-center gap-2.5">
           <span
@@ -237,28 +245,28 @@ export function Computers() {
     },
     {
       key: "os",
-      header: "운영체제",
+      header: t("computers:th_os"),
       render: (c: ADComputer) => (
         <span className="text-secondary">{c.os || "—"}</span>
       ),
     },
     {
       key: "ou",
-      header: "OU",
+      header: t("computers:th_ou"),
       render: (c: ADComputer) => (
         <span className="font-mono text-xs text-muted">{c.ou || "—"}</span>
       ),
     },
     {
       key: "enabled",
-      header: "상태",
+      header: t("computers:th_status"),
       render: (c: ADComputer) => (
         <StatusBadge status={c.enabled ? "enabled" : "disabled"} />
       ),
     },
     {
       key: "last_logon",
-      header: "최근 로그인",
+      header: t("computers:th_last_logon"),
       render: (c: ADComputer) => (
         <span className="text-muted">{formatDate(c.last_logon)}</span>
       ),
@@ -271,9 +279,9 @@ export function Computers() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-primary">컴퓨터 관리</h1>
+          <h1 className="text-xl font-bold text-primary">{t("computers:title")}</h1>
           <p className="mt-0.5 text-sm text-secondary">
-            총 {total.toLocaleString()}대의 컴퓨터
+            {t("computers:subtitle_count", { count: total.toLocaleString() })}
           </p>
         </div>
       </div>
@@ -287,7 +295,7 @@ export function Computers() {
           />
           <input
             className="input pl-9"
-            placeholder="호스트 이름 검색"
+            placeholder={t("computers:ph_search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -303,7 +311,7 @@ export function Computers() {
             value={osFilter}
             onChange={(e) => setOsFilter(e.target.value)}
           >
-            <option value="">모든 운영체제</option>
+            <option value="">{t("computers:filter_all_os")}</option>
             {osOptions.map((o) => (
               <option key={o} value={o}>
                 {o}
@@ -317,7 +325,7 @@ export function Computers() {
         </div>
 
         <button className="btn-outline" onClick={handleExport}>
-          <Download size={16} /> CSV 내보내기
+          <Download size={16} /> {t("computers:btn_export_csv")}
         </button>
       </div>
 
@@ -330,7 +338,7 @@ export function Computers() {
             onClick={fetchComputers}
             className="ml-auto rounded px-2 py-1 text-xs hover:bg-red/10"
           >
-            재시도
+            {t("computers:btn_retry")}
           </button>
         </div>
       )}
@@ -340,11 +348,11 @@ export function Computers() {
         {!loading && !visibleComputers.length ? (
           <EmptyState
             icon={Monitor}
-            title="컴퓨터가 없습니다"
+            title={t("computers:empty_no_computers_title")}
             description={
               debouncedSearch || osFilter
-                ? "검색 조건에 일치하는 컴퓨터가 없습니다."
-                : "등록된 컴퓨터가 없습니다."
+                ? t("computers:empty_no_computers_filtered")
+                : t("computers:empty_no_computers_registered")
             }
           />
         ) : (
@@ -352,7 +360,7 @@ export function Computers() {
             columns={columns}
             data={visibleComputers}
             loading={loading}
-            emptyMessage="컴퓨터가 없습니다"
+            emptyMessage={t("computers:empty_no_computers")}
             onRowClick={openDetail}
           />
         )}
@@ -369,7 +377,7 @@ export function Computers() {
       <Drawer
         open={detailOpen}
         onClose={closeDetail}
-        title="컴퓨터 상세"
+        title={t("computers:drawer_title_detail")}
         width="lg"
       >
         {detailLoading && !selectedComputer && (
@@ -401,7 +409,7 @@ export function Computers() {
                   {selectedComputer.hostname || "—"}
                 </h3>
                 <p className="truncate text-sm text-secondary">
-                  {selectedComputer.os || "운영체제 정보 없음"}
+                  {selectedComputer.os || t("computers:os_info_none")}
                 </p>
                 <div className="mt-1.5">
                   <StatusBadge
@@ -412,34 +420,34 @@ export function Computers() {
             </div>
 
             {/* Basic info */}
-            <DetailSection title="기본 정보">
+            <DetailSection title={t("computers:section_basic_info")}>
               <InfoRow
                 icon={Monitor}
-                label="호스트명"
+                label={t("computers:label_hostname")}
                 value={selectedComputer.hostname}
                 mono
               />
-              <InfoRow icon={Info} label="운영체제" value={selectedComputer.os} />
+              <InfoRow icon={Info} label={t("computers:label_os")} value={selectedComputer.os} />
               <InfoRow
                 icon={Network}
-                label="IP 주소"
+                label={t("computers:label_ip_address")}
                 value={selectedComputer.ip_address}
                 mono
               />
               <InfoRow
                 icon={FolderTree}
-                label="조직 단위"
+                label={t("computers:label_ou")}
                 value={selectedComputer.ou}
                 mono
               />
               <InfoRow
                 icon={Info}
-                label="설명"
+                label={t("computers:label_description")}
                 value={selectedComputer.description}
               />
               <InfoRow
                 icon={Clock}
-                label="최근 로그인"
+                label={t("computers:label_last_logon")}
                 value={formatDate(selectedComputer.last_logon)}
               />
             </DetailSection>

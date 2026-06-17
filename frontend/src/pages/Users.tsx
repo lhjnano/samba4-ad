@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   UserPlus,
   Search,
@@ -55,6 +56,8 @@ const EMPTY_FORM: CreateForm = {
 
 type Toast = { type: "success" | "error"; message: string } | null;
 
+type TFunc = (key: string, opts?: Record<string, unknown>) => string;
+
 // ── Helpers ────────────────────────────────────────
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -91,22 +94,24 @@ function parseGroups(raw: string): string[] {
     .filter(Boolean);
 }
 
-function validatePassword(pw: string): string | null {
-  if (!pw) return "비밀번호를 입력하세요";
-  if (pw.length < 8) return "비밀번호는 8자 이상이어야 합니다";
+function validatePassword(pw: string, t: TFunc): string | null {
+  if (!pw) return t("users:validation_password_required");
+  if (pw.length < 8) return t("users:validation_password_min");
   if (
     !/[A-Z]/.test(pw) ||
     !/[a-z]/.test(pw) ||
     !/[0-9]/.test(pw) ||
     !/[^A-Za-z0-9]/.test(pw)
   ) {
-    return "대문자, 소문자, 숫자, 특수문자 각각 1개 이상 필요합니다";
+    return t("users:validation_password_complexity");
   }
   return null;
 }
 
 // ── Page ───────────────────────────────────────────
 export function Users() {
+  const { t } = useTranslation();
+
   // List state
   const [users, setUsers] = useState<ADUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -144,11 +149,11 @@ export function Users() {
 
   // ── Debounced search ─────────────────────────────
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setDebouncedSearch(search.trim());
       setPage(1);
     }, 350);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [search]);
 
   // ── Fetch list ───────────────────────────────────
@@ -170,12 +175,12 @@ export function Users() {
     } catch (err) {
       setError(
         (err as { message?: string })?.message ??
-          "사용자 목록을 불러오지 못했습니다",
+          t("users:error_load_list"),
       );
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch]);
+  }, [page, debouncedSearch, t]);
 
   useEffect(() => {
     fetchUsers();
@@ -198,8 +203,8 @@ export function Users() {
   // ── Auto-dismiss toast ───────────────────────────
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timer);
   }, [toast]);
 
   // ── Detail ───────────────────────────────────────
@@ -218,7 +223,7 @@ export function Users() {
     } catch (err) {
       setDetailError(
         (err as { message?: string })?.message ??
-          "사용자 정보를 불러오지 못했습니다",
+          t("users:error_load_detail"),
       );
     } finally {
       setDetailLoading(false);
@@ -253,14 +258,14 @@ export function Users() {
       setToast({
         type: "success",
         message: data.enabled
-          ? "사용자가 활성화되었습니다"
-          : "사용자가 비활성화되었습니다",
+          ? t("users:toast_user_enabled")
+          : t("users:toast_user_disabled"),
       });
     } catch (err) {
       setToast({
         type: "error",
         message:
-          (err as { message?: string })?.message ?? "상태 변경에 실패했습니다",
+          (err as { message?: string })?.message ?? t("users:toast_status_failed"),
       });
     } finally {
       setActionLoading(null);
@@ -269,7 +274,7 @@ export function Users() {
 
   async function handleResetPassword() {
     if (!selectedUser) return;
-    const v = validatePassword(newPassword);
+    const v = validatePassword(newPassword, t);
     if (v) {
       setResetError(v);
       return;
@@ -279,7 +284,7 @@ export function Users() {
       await api.post(`${API_BASE}/users/${selectedUser.id}/reset-password`, {
         new_password: newPassword,
       });
-      setToast({ type: "success", message: "비밀번호가 재설정되었습니다" });
+      setToast({ type: "success", message: t("users:toast_password_reset") });
       setShowReset(false);
       setNewPassword("");
       setResetError(null);
@@ -288,7 +293,7 @@ export function Users() {
         type: "error",
         message:
           (err as { message?: string })?.message ??
-          "비밀번호 재설정에 실패했습니다",
+          t("users:toast_password_reset_failed"),
       });
     } finally {
       setActionLoading(null);
@@ -300,13 +305,13 @@ export function Users() {
     setActionLoading("delete");
     try {
       await api.delete(`${API_BASE}/users/${selectedUser.id}`);
-      setToast({ type: "success", message: "사용자가 삭제되었습니다" });
+      setToast({ type: "success", message: t("users:toast_user_deleted") });
       closeDetail();
       fetchUsers();
     } catch (err) {
       setToast({
         type: "error",
-        message: (err as { message?: string })?.message ?? "삭제에 실패했습니다",
+        message: (err as { message?: string })?.message ?? t("users:toast_delete_failed"),
       });
     } finally {
       setActionLoading(null);
@@ -333,12 +338,12 @@ export function Users() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!form.username.trim()) errs.username = "사용자 이름을 입력하세요";
-    if (!form.display_name.trim()) errs.display_name = "표시 이름을 입력하세요";
-    if (!form.email.trim()) errs.email = "이메일을 입력하세요";
+    if (!form.username.trim()) errs.username = t("users:validation_username_required");
+    if (!form.display_name.trim()) errs.display_name = t("users:validation_display_name_required");
+    if (!form.email.trim()) errs.email = t("users:validation_email_required");
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
-      errs.email = "올바른 이메일 형식이 아닙니다";
-    const pwErr = validatePassword(form.password);
+      errs.email = t("users:validation_email_format");
+    const pwErr = validatePassword(form.password, t);
     if (pwErr) errs.password = pwErr;
     setFormErrors(errs);
     if (Object.keys(errs).length) return;
@@ -375,8 +380,8 @@ export function Users() {
       setToast({
         type: groupsFailed ? "error" : "success",
         message: groupsFailed
-          ? "사용자가 생성되었으나 그룹 할당에 실패했습니다"
-          : "사용자가 생성되었습니다",
+          ? t("users:toast_user_created_groups_failed")
+          : t("users:toast_user_created"),
       });
       setCreateOpen(false);
       setForm(EMPTY_FORM);
@@ -386,7 +391,7 @@ export function Users() {
       setToast({
         type: "error",
         message:
-          (err as { message?: string })?.message ?? "사용자 생성에 실패했습니다",
+          (err as { message?: string })?.message ?? t("users:toast_user_create_failed"),
       });
     } finally {
       setSubmitting(false);
@@ -397,7 +402,7 @@ export function Users() {
   const columns = [
     {
       key: "display_name",
-      header: "이름",
+      header: t("users:th_name"),
       render: (u: ADUser) => (
         <div className="flex flex-col">
           <span className="font-medium text-primary">
@@ -409,33 +414,33 @@ export function Users() {
     },
     {
       key: "department",
-      header: "부서",
+      header: t("users:th_department"),
       render: (u: ADUser) => (
         <span className="text-secondary">{u.department || "—"}</span>
       ),
     },
     {
       key: "title",
-      header: "직함",
+      header: t("users:th_title"),
       render: (u: ADUser) => (
         <span className="text-secondary">{u.title || "—"}</span>
       ),
     },
     {
       key: "status",
-      header: "상태",
+      header: t("users:th_status"),
       render: (u: ADUser) => <StatusBadge status={statusFor(u)} />,
     },
     {
       key: "ou",
-      header: "OU",
+      header: t("users:th_ou"),
       render: (u: ADUser) => (
         <span className="font-mono text-xs text-muted">{u.ou || "—"}</span>
       ),
     },
     {
       key: "last_logon",
-      header: "최근 로그인",
+      header: t("users:th_last_logon"),
       render: (u: ADUser) => (
         <span className="text-muted">{formatDate(u.last_logon)}</span>
       ),
@@ -448,9 +453,9 @@ export function Users() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-primary">사용자 관리</h1>
+          <h1 className="text-xl font-bold text-primary">{t("users:title")}</h1>
           <p className="mt-0.5 text-sm text-secondary">
-            총 {total.toLocaleString()}명의 사용자
+            {t("users:subtitle_count", { count: total.toLocaleString() })}
           </p>
         </div>
       </div>
@@ -464,7 +469,7 @@ export function Users() {
           />
           <input
             className="input pl-9"
-            placeholder="이름 또는 사용자 이름 검색"
+            placeholder={t("users:ph_search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -480,7 +485,7 @@ export function Users() {
             value={department}
             onChange={(e) => setDepartment(e.target.value)}
           >
-            <option value="">모든 부서</option>
+            <option value="">{t("users:filter_all_departments")}</option>
             {departments.map((d) => (
               <option key={d} value={d}>
                 {d}
@@ -495,10 +500,10 @@ export function Users() {
 
         <div className="flex gap-2">
           <button className="btn-outline" onClick={handleExport}>
-            <Download size={16} /> 내보내기
+            <Download size={16} /> {t("users:btn_export")}
           </button>
           <button className="btn-primary" onClick={openCreate}>
-            <UserPlus size={16} /> 사용자 추가
+            <UserPlus size={16} /> {t("users:btn_add_user")}
           </button>
         </div>
       </div>
@@ -512,7 +517,7 @@ export function Users() {
             onClick={fetchUsers}
             className="ml-auto rounded px-2 py-1 text-xs hover:bg-red/10"
           >
-            재시도
+            {t("users:btn_retry")}
           </button>
         </div>
       )}
@@ -523,7 +528,7 @@ export function Users() {
           columns={columns}
           data={visibleUsers}
           loading={loading}
-          emptyMessage="사용자가 없습니다"
+          emptyMessage={t("users:empty_no_users")}
           onRowClick={openDetail}
         />
         <div className="border-t border-border-subtle px-4 py-3">
@@ -539,7 +544,7 @@ export function Users() {
       <Drawer
         open={detailOpen}
         onClose={closeDetail}
-        title="사용자 상세"
+        title={t("users:drawer_title_detail")}
         width="lg"
       >
         {detailLoading && !selectedUser && (
@@ -575,35 +580,37 @@ export function Users() {
             </div>
 
             {/* Basic info */}
-            <DetailSection title="기본 정보">
-              <InfoRow icon={Mail} label="이메일" value={selectedUser.email} />
+            <DetailSection title={t("users:section_basic_info")}>
+              <InfoRow icon={Mail} label={t("users:label_email")} value={selectedUser.email} />
               <InfoRow
                 icon={Building2}
-                label="부서"
+                label={t("users:label_department")}
                 value={selectedUser.department}
               />
-              <InfoRow icon={UserCog} label="직함" value={selectedUser.title} />
+              <InfoRow icon={UserCog} label={t("users:label_title")} value={selectedUser.title} />
               <InfoRow
                 icon={FolderTree}
-                label="조직 단위"
+                label={t("users:label_ou")}
                 value={selectedUser.ou}
                 mono
               />
               <InfoRow
                 icon={Clock}
-                label="생성일"
+                label={t("users:label_created")}
                 value={formatDate(selectedUser.created_at)}
               />
               <InfoRow
                 icon={Clock}
-                label="최근 로그인"
+                label={t("users:label_last_logon")}
                 value={formatDate(selectedUser.last_logon)}
               />
             </DetailSection>
 
             {/* Groups */}
             <DetailSection
-              title={`그룹 멤버십 (${selectedUser.member_of?.length ?? 0})`}
+              title={t("users:section_group_membership", {
+                count: selectedUser.member_of?.length ?? 0,
+              })}
             >
               {selectedUser.member_of?.length ? (
                 <div className="flex flex-wrap gap-1.5 p-4">
@@ -618,12 +625,12 @@ export function Users() {
                   ))}
                 </div>
               ) : (
-                <p className="p-4 text-xs text-muted">소속된 그룹이 없습니다</p>
+                <p className="p-4 text-xs text-muted">{t("users:empty_no_groups")}</p>
               )}
             </DetailSection>
 
             {/* Management actions */}
-            <DetailSection title="계정 관리">
+            <DetailSection title={t("users:section_account_management")}>
               <div className="space-y-2 p-4">
                 <button
                   onClick={handleToggleEnabled}
@@ -635,7 +642,9 @@ export function Users() {
                   ) : (
                     <Power size={16} />
                   )}
-                  {selectedUser.enabled ? "비활성화" : "활성화"}
+                  {selectedUser.enabled
+                    ? t("users:btn_disable")
+                    : t("users:btn_enable")}
                 </button>
 
                 <button
@@ -645,18 +654,18 @@ export function Users() {
                   }}
                   className="btn-outline w-full justify-center"
                 >
-                  <Key size={16} /> 비밀번호 재설정
+                  <Key size={16} /> {t("users:btn_reset_password")}
                 </button>
 
                 {showReset && (
                   <div className="rounded-md border border-border-subtle bg-root/50 p-3">
-                    <label className="label">새 비밀번호</label>
+                    <label className="label">{t("users:label_new_password")}</label>
                     <input
                       type="password"
                       className="input"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="새 비밀번호 입력"
+                      placeholder={t("users:ph_new_password")}
                       autoComplete="new-password"
                     />
                     {resetError && (
@@ -671,7 +680,7 @@ export function Users() {
                         }}
                         className="btn-outline flex-1 justify-center"
                       >
-                        취소
+                        {t("users:btn_cancel")}
                       </button>
                       <button
                         onClick={handleResetPassword}
@@ -683,7 +692,7 @@ export function Users() {
                         ) : (
                           <Check size={16} />
                         )}
-                        재설정
+                        {t("users:btn_reset")}
                       </button>
                     </div>
                   </div>
@@ -693,7 +702,7 @@ export function Users() {
                   onClick={() => setShowDeleteConfirm(true)}
                   className="btn-danger w-full justify-center"
                 >
-                  <Trash2 size={16} /> 사용자 삭제
+                  <Trash2 size={16} /> {t("users:btn_delete_user")}
                 </button>
 
                 {showDeleteConfirm && (
@@ -704,9 +713,9 @@ export function Users() {
                         className="mt-0.5 flex-shrink-0"
                       />
                       <p>
-                        정말{" "}
-                        <strong>{selectedUser.display_name}</strong>{" "}
-                        사용자를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+                        {t("users:confirm_delete_user", {
+                          name: selectedUser.display_name,
+                        })}
                       </p>
                     </div>
                     <div className="mt-2 flex gap-2">
@@ -714,7 +723,7 @@ export function Users() {
                         onClick={() => setShowDeleteConfirm(false)}
                         className="btn-outline flex-1 justify-center"
                       >
-                        취소
+                        {t("users:btn_cancel")}
                       </button>
                       <button
                         onClick={handleDelete}
@@ -726,7 +735,7 @@ export function Users() {
                         ) : (
                           <Trash2 size={16} />
                         )}
-                        삭제 확인
+                        {t("users:btn_delete_confirm")}
                       </button>
                     </div>
                   </div>
@@ -741,97 +750,100 @@ export function Users() {
       <Drawer
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        title="사용자 추가"
+        title={t("users:drawer_title_create")}
         width="lg"
       >
         <form onSubmit={handleCreate} className="space-y-5">
           <div className="grid grid-cols-2 gap-4">
-            <Field label="사용자 이름 *" error={formErrors.username}>
+            <Field label={t("users:label_username")} error={formErrors.username}>
               <input
                 className="input font-mono"
                 value={form.username}
                 onChange={(e) => setField("username", e.target.value)}
-                placeholder="jdoe"
+                placeholder={t("users:ph_username")}
                 autoComplete="off"
               />
             </Field>
-            <Field label="표시 이름 *" error={formErrors.display_name}>
+            <Field label={t("users:label_display_name")} error={formErrors.display_name}>
               <input
                 className="input"
                 value={form.display_name}
                 onChange={(e) => setField("display_name", e.target.value)}
-                placeholder="John Doe"
+                placeholder={t("users:ph_display_name")}
                 autoComplete="off"
               />
             </Field>
           </div>
 
-          <Field label="이메일 *" error={formErrors.email}>
+          <Field label={t("users:label_email_required")} error={formErrors.email}>
             <input
               type="email"
               className="input"
               value={form.email}
               onChange={(e) => setField("email", e.target.value)}
-              placeholder="john.doe@example.com"
+              placeholder={t("users:ph_email")}
               autoComplete="off"
             />
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label="부서">
+            <Field label={t("users:label_department_form")}>
               <input
                 className="input"
                 value={form.department}
                 onChange={(e) => setField("department", e.target.value)}
-                placeholder="IT 부서"
+                placeholder={t("users:ph_department")}
                 autoComplete="off"
               />
             </Field>
-            <Field label="직함">
+            <Field label={t("users:label_title_form")}>
               <input
                 className="input"
                 value={form.title}
                 onChange={(e) => setField("title", e.target.value)}
-                placeholder="엔지니어"
+                placeholder={t("users:ph_title")}
                 autoComplete="off"
               />
             </Field>
           </div>
 
           <Field
-            label="비밀번호 *"
+            label={t("users:label_password")}
             error={formErrors.password}
-            hint="대문자, 소문자, 숫자, 특수문자 각각 1개 이상, 8자 이상"
+            hint={t("users:hint_password_complexity")}
           >
             <input
               type="password"
               className="input"
               value={form.password}
               onChange={(e) => setField("password", e.target.value)}
-              placeholder="••••••••"
+              placeholder={t("users:ph_password")}
               autoComplete="new-password"
             />
           </Field>
 
           <Field
-            label="조직 단위 (OU)"
-            hint="예: OU=Staff,DC=corp,DC=example,DC=com"
+            label={t("users:label_ou_form")}
+            hint={t("users:hint_ou_example")}
           >
             <input
               className="input font-mono"
               value={form.ou}
               onChange={(e) => setField("ou", e.target.value)}
-              placeholder="OU=Users,DC=corp,DC=example,DC=com"
+              placeholder={t("users:ph_ou")}
               autoComplete="off"
             />
           </Field>
 
-          <Field label="그룹" hint="쉼표로 구분하여 입력">
+          <Field
+            label={t("users:label_groups")}
+            hint={t("users:hint_groups_comma")}
+          >
             <input
               className="input"
               value={form.groups}
               onChange={(e) => setField("groups", e.target.value)}
-              placeholder="Domain Admins, IT Team"
+              placeholder={t("users:ph_groups")}
               autoComplete="off"
             />
           </Field>
@@ -842,7 +854,7 @@ export function Users() {
               className="btn-outline"
               onClick={() => setCreateOpen(false)}
             >
-              취소
+              {t("users:btn_cancel")}
             </button>
             <button
               type="submit"
@@ -851,11 +863,11 @@ export function Users() {
             >
               {submitting ? (
                 <>
-                  <Loader2 size={16} className="animate-spin" /> 생성 중...
+                  <Loader2 size={16} className="animate-spin" /> {t("users:btn_creating")}
                 </>
               ) : (
                 <>
-                  <UserPlus size={16} /> 생성
+                  <UserPlus size={16} /> {t("users:btn_create")}
                 </>
               )}
             </button>

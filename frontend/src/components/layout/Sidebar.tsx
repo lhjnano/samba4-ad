@@ -12,29 +12,32 @@ import {
   ScrollText,
 } from "lucide-react";
 import { clsx } from "clsx";
-
-const nav = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "대시보드" },
-  { to: "/users", icon: Users, label: "사용자" },
-  { to: "/groups", icon: UsersRound, label: "그룹" },
-  { to: "/computers", icon: Monitor, label: "컴퓨터" },
-  { to: "/ous", icon: FolderTree, label: "조직 단위" },
-  { to: "/gpos", icon: FileText, label: "GPO" },
-  { to: "/policies", icon: Shield, label: "도메인 정책" },
-  { to: "/dns", icon: Network, label: "DNS" },
-  { to: "/logs", icon: ScrollText, label: "감사 로그" },
-  { to: "/settings", icon: Settings, label: "설정" },
-];
+import { useTranslation } from "react-i18next";
 
 export function Sidebar() {
+  const { t } = useTranslation();
+
+  const nav = [
+    { to: "/dashboard", icon: LayoutDashboard, label: t("common:nav_dashboard") },
+    { to: "/users", icon: Users, label: t("common:nav_users") },
+    { to: "/groups", icon: UsersRound, label: t("common:nav_groups") },
+    { to: "/computers", icon: Monitor, label: t("common:nav_computers") },
+    { to: "/ous", icon: FolderTree, label: t("common:nav_ous") },
+    { to: "/gpos", icon: FileText, label: t("common:nav_gpos") },
+    { to: "/policies", icon: Shield, label: t("common:nav_policies") },
+    { to: "/dns", icon: Network, label: t("common:nav_dns") },
+    { to: "/logs", icon: ScrollText, label: t("common:nav_logs") },
+    { to: "/settings", icon: Settings, label: t("common:nav_settings") },
+  ];
+
   return (
     <aside className="flex w-60 flex-shrink-0 flex-col border-r border-border bg-sidebar">
       {/* Logo */}
       <div className="flex h-14 items-center gap-2.5 border-b border-border px-5">
         <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue font-bold text-white">
-          AD
+          {t("common:app_logo")}
         </div>
-        <span className="text-sm font-semibold text-primary">AD Manager</span>
+        <span className="text-sm font-semibold text-primary">{t("common:app_name")}</span>
       </div>
 
       {/* Nav */}
@@ -60,8 +63,8 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="border-t border-border p-4 text-xs text-muted">
-        <div className="font-medium text-secondary">AD Manager v0.1</div>
-        <div className="mt-0.5">Samba 4 AD DC</div>
+        <div className="font-medium text-secondary">{t("common:app_version")}</div>
+        <div className="mt-0.5">{t("common:app_tagline")}</div>
       </div>
     </aside>
   );

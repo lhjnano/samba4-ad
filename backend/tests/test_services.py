@@ -31,13 +31,13 @@ class TestUsers:
     @pytest.mark.unit
     def test_list_users_default_page(self, dir_: MockDirectory) -> None:
         items, total = dir_.list_users(page=1, limit=5)
-        assert len(items) == 5
-        assert total >= 40
+        assert len(items) == 3  # built-in: Administrator, Guest, krbtgt
+        assert total == 3
 
     @pytest.mark.unit
     def test_search_by_username(self, dir_: MockDirectory) -> None:
-        items, _ = dir_.list_users(q="user0001")
-        assert items and items[0].username == "user0001"
+        items, _ = dir_.list_users(q="admin")
+        assert items and items[0].username == "Administrator"
 
     @pytest.mark.unit
     def test_filter_by_status(self, dir_: MockDirectory) -> None:
@@ -98,13 +98,13 @@ class TestUsers:
     @pytest.mark.unit
     def test_get_missing_user_raises(self, dir_: MockDirectory) -> None:
         with pytest.raises(EntryNotFoundError):
-            dir_.get_user(encode_id("CN=ghost,DC=TEST,DC=LOCAL"))
+            dir_.get_user(encode_id("CN=ghost,DC=CORP,DC=LOCAL"))
 
     @pytest.mark.unit
     def test_user_login_history(self, dir_: MockDirectory) -> None:
         items, _ = dir_.list_users(limit=1)
         history = dir_.user_login_history(items[0].id)
-        assert len(history) == 5
+        assert history == []  # fresh domain: no login history yet
 
 
 # ---------------------------------------------------------------------------
@@ -150,7 +150,8 @@ class TestOUs:
     @pytest.mark.unit
     def test_ou_tree_has_roots(self, dir_: MockDirectory) -> None:
         tree = dir_.ou_tree()
-        assert len(tree) >= 6
+        assert len(tree) >= 1  # Domain Controllers OU
+        assert tree[0].name == "Domain Controllers"
 
     @pytest.mark.unit
     def test_create_ou(self, dir_: MockDirectory) -> None:
@@ -185,13 +186,13 @@ class TestComputers:
     @pytest.mark.unit
     def test_list_computers(self, dir_: MockDirectory) -> None:
         items, total = dir_.list_computers()
-        assert total >= 24
-        assert items[0].hostname
+        assert total == 0  # fresh domain: no joined computers
+        assert items == []
 
     @pytest.mark.unit
     def test_os_distribution(self, dir_: MockDirectory) -> None:
         dist = dir_.computer_os_distribution()
-        assert any(d.os == "Windows 11" for d in dist)
+        assert dist == []  # no computers → empty distribution
 
     @pytest.mark.unit
     def test_join_trend(self, dir_: MockDirectory) -> None:
@@ -200,6 +201,22 @@ class TestComputers:
 
     @pytest.mark.unit
     def test_set_computer_status(self, dir_: MockDirectory) -> None:
+        # fresh domain has 0 computers; inject one in-memory then toggle
+        from datetime import datetime
+
+        dn = "CN=TEST-PC,CN=Computers,DC=CORP,DC=LOCAL"
+        dir_.computers[dn] = {
+            "hostname": "TEST-PC",
+            "dns_hostname": "TEST-PC.corp.local",
+            "dn": dn,
+            "operating_system": "Windows 11",
+            "operating_system_version": "23H2",
+            "ip_address": "10.0.0.10",
+            "status": "active",
+            "when_created": datetime.now(),
+            "last_logon": None,
+            "object_sid": "S-1-5-21-100-999",
+        }
         items, _ = dir_.list_computers(limit=1)
         updated = dir_.set_computer_status(items[0].id, "inactive")
         assert updated.status.value == "inactive"
@@ -212,13 +229,15 @@ class TestGPOs:
     @pytest.mark.unit
     def test_list_gpos(self, dir_: MockDirectory) -> None:
         _items, total = dir_.list_gpos()
-        assert total >= 4
+        assert total == 2  # Default Domain Policy + Default DC Policy
 
     @pytest.mark.unit
     def test_create_and_link_gpo(self, dir_: MockDirectory) -> None:
         g = dir_.create_gpo("New Policy", None)
         assert g.display_name == "New Policy"
-        linked = dir_.link_gpo(g.id, "OU=개발팀,DC=TEST,DC=LOCAL", enforced=True)
+        linked = dir_.link_gpo(
+            g.id, "OU=Domain Controllers,DC=CORP,DC=LOCAL", enforced=True
+        )
         assert any(link.mode.value == "enforced" for link in linked.linked_ous)
 
     @pytest.mark.unit
@@ -242,7 +261,7 @@ class TestDomainAndHealth:
     @pytest.mark.unit
     def test_domain_info(self, dir_: MockDirectory) -> None:
         info = dir_.domain_info()
-        assert info.fqdn == "TEST.LOCAL"
+        assert info.fqdn == "CORP.LOCAL"
 
     @pytest.mark.unit
     def test_password_policy_roundtrip(self, dir_: MockDirectory) -> None:
@@ -270,14 +289,14 @@ class TestDomainAndHealth:
     @pytest.mark.unit
     def test_login_trend(self, dir_: MockDirectory) -> None:
         trend = dir_.login_trend()  # type: ignore[attr-defined]
-        assert len(trend) == 7
+        assert trend == []  # fresh domain: no login data yet
 
     @pytest.mark.unit
     def test_ou_distribution(self, dir_: MockDirectory) -> None:
         dist = dir_.ou_distribution()  # type: ignore[attr-defined]
-        assert any(d.ou == "개발팀" for d in dist)
+        assert dist == []  # fresh domain: no users in OUs yet
 
     @pytest.mark.unit
     def test_recent_alerts(self, dir_: MockDirectory) -> None:
         alerts = dir_.recent_alerts()  # type: ignore[attr-defined]
-        assert len(alerts) == 5
+        assert alerts == []  # fresh domain: no alerts yet

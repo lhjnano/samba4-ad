@@ -1,4 +1,5 @@
 import { clsx } from "clsx";
+import { useTranslation } from "react-i18next";
 
 type Col<T> = {
   key: keyof T | string;
@@ -20,13 +21,16 @@ export function DataTable<T extends Record<string, any>>({
   columns,
   data,
   loading,
-  emptyMessage = "데이터가 없습니다",
+  emptyMessage,
   onRowClick,
 }: Props<T>) {
+  const { t } = useTranslation();
+  const msg = emptyMessage || t("common:empty_table_default");
+
   if (loading) {
     return (
       <div className="flex h-40 items-center justify-center">
-        <div className="text-sm text-muted">로딩 중...</div>
+        <div className="text-sm text-muted">{t("common:loading_dot")}</div>
       </div>
     );
   }
@@ -34,7 +38,7 @@ export function DataTable<T extends Record<string, any>>({
   if (!data.length) {
     return (
       <div className="flex h-40 items-center justify-center">
-        <div className="text-sm text-muted">{emptyMessage}</div>
+        <div className="text-sm text-muted">{msg}</div>
       </div>
     );
   }

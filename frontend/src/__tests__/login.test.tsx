@@ -43,7 +43,7 @@ describe("Login", () => {
     // Both username and password default to "admin"
     const inputs = screen.getAllByDisplayValue("admin");
     expect(inputs).toHaveLength(2);
-    expect(screen.getByRole("button", { name: /로그인/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Login/ })).toBeInTheDocument();
   });
 
   it("shows hint text about mock credentials", () => {
@@ -56,7 +56,7 @@ describe("Login", () => {
     const user = userEvent.setup();
     renderLogin();
 
-    await user.click(screen.getByRole("button", { name: /로그인/ }));
+    await user.click(screen.getByRole("button", { name: /Login/ }));
 
     await waitFor(() => {
       expect(mockLogin).toHaveBeenCalledWith("admin", "admin");
@@ -68,7 +68,7 @@ describe("Login", () => {
     const user = userEvent.setup();
     renderLogin();
 
-    await user.click(screen.getByRole("button", { name: /로그인/ }));
+    await user.click(screen.getByRole("button", { name: /Login/ }));
 
     await waitFor(() => {
       expect(screen.getByText("Invalid credentials")).toBeInTheDocument();

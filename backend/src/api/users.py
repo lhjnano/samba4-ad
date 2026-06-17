@@ -52,7 +52,7 @@ def list_users(
         None, alias="status", description="active|inactive|locked"
     ),
     page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=500),
+    page_size: int = Query(20, alias="page_size", ge=1, le=500),
     sort: str = Query("username"),
     order: str = Query("asc", pattern="^(asc|desc)$"),
     directory: DirectoryBackend = Depends(get_directory),
@@ -62,11 +62,11 @@ def list_users(
         ou=ou,
         status=status_filter,
         page=page,
-        limit=limit,
+        limit=page_size,
         sort=sort,
         order=order,
     )
-    return Page.of(items, total, page, limit)
+    return Page.of(items, total, page, page_size)
 
 
 @router.get("/stats", response_model=UserStats, summary="User aggregate stats")

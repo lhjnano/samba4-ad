@@ -1,11 +1,15 @@
 """SPDX-License-Identifier: Apache-2.0
 
 Organizational Unit routes — ``/api/v1/ou``.
+
+``GET /ou`` returns a paginated flat list (for the management table).
+``GET /ou/tree`` returns the hierarchical tree (for tree-view widgets).
 """
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query, status
+from pydantic import BaseModel, Field
 
 from src.api._errors import to_http_error
 from src.core.deps import get_directory
@@ -23,20 +27,82 @@ from src.services.directory import DirectoryBackend, DirectoryError
 router = APIRouter(prefix="/ou", tags=["ou"])
 
 
-@router.get("", response_model=list[OuTreeNode])
-def search_ou(
-    q: str | None = Query(None),
+# ── Paginated list response (matches frontend Paginated<ADOU>) ────────
+
+
+class OuListItem(BaseModel):
+    """Flat OU row for the management table (matches frontend ADOU type)."""
+
+    id: str
+    name: str
+    dn: str
+    description: str | None = None
+    child_ous: int = Field(ge=0)
+    user_count: int = Field(ge=0)
+    computer_count: int = Field(ge=0)
+    gpo_links: list[str] = Field(default_factory=list)
+
+
+class PaginatedOUs(BaseModel):
+    items: list[OuListItem]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+def _flatten_tree(
+    nodes: list[OuTreeNode], acc: list[OuListItem] | None = None
+) -> list[OuListItem]:
+    """Recursively flatten OU tree into a flat list."""
+    if acc is None:
+        acc = []
+    for node in nodes:
+        acc.append(
+            OuListItem(
+                id=node.id,
+                name=node.name,
+                dn=node.dn,
+                description=node.description,
+                child_ous=len(node.children),
+                user_count=node.user_count,
+                computer_count=node.computer_count,
+                gpo_links=[],  # names populated from detail if needed
+            )
+        )
+        _flatten_tree(node.children, acc)
+    return acc
+
+
+@router.get("", response_model=PaginatedOUs)
+def list_ous(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    search: str | None = Query(None),
+    q: str | None = Query(None),  # alias for backward compat
     directory: DirectoryBackend = Depends(get_directory),
-) -> list[OuTreeNode]:
+) -> PaginatedOUs:
+    """Paginated flat list of OUs (for the management table)."""
+    query = search or q
     tree = directory.ou_tree()
-    if not q:
-        return tree
-    ql = q.lower()
+    flat = _flatten_tree(tree)
 
-    def matches(node: OuTreeNode) -> bool:
-        return ql in node.name.lower() or any(matches(c) for c in node.children)
+    if query:
+        ql = query.lower()
+        flat = [o for o in flat if ql in o.name.lower()]
 
-    return [n for n in tree if matches(n)]
+    total = len(flat)
+    pages = (total + page_size - 1) // page_size if total else 1
+    start = (page - 1) * page_size
+    items = flat[start : start + page_size]
+
+    return PaginatedOUs(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=pages,
+    )
 
 
 @router.get("/tree", response_model=list[OuTreeNode])

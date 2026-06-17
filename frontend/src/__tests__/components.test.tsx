@@ -49,7 +49,7 @@ describe("DataTable", () => {
         loading
       />
     );
-    expect(screen.getByText("로딩 중...")).toBeInTheDocument();
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
   });
 
   it("calls onRowClick when row is clicked", async () => {
@@ -93,22 +93,22 @@ describe("DataTable", () => {
 describe("StatusBadge", () => {
   it("renders enabled status", () => {
     const { container } = render(<StatusBadge status="enabled" />);
-    expect(container.textContent).toContain("활성");
+    expect(container.textContent).toContain("Active");
   });
 
   it("renders disabled status", () => {
     const { container } = render(<StatusBadge status="disabled" />);
-    expect(container.textContent).toContain("비활성");
+    expect(container.textContent).toContain("Disabled");
   });
 
   it("renders locked status", () => {
     const { container } = render(<StatusBadge status="locked" />);
-    expect(container.textContent).toContain("잠김");
+    expect(container.textContent).toContain("Locked");
   });
 
   it("renders healthy status", () => {
     const { container } = render(<StatusBadge status="healthy" />);
-    expect(container.textContent).toContain("정상");
+    expect(container.textContent).toContain("Healthy");
   });
 
   it("accepts custom label", () => {

@@ -17,10 +17,13 @@ import {
   Boxes,
   HardDrive,
   ShieldCheck,
+  Languages,
 } from "lucide-react";
 import { clsx } from "clsx";
+import { useTranslation } from "react-i18next";
 import { api } from "@/api/client";
 import type { DashboardStats } from "@/types/api";
+import { LANGUAGES } from "@/i18n";
 
 // ── Constants ──────────────────────────────────────
 const API_BASE = "/api/v1";
@@ -51,6 +54,7 @@ const DEFAULT_LDAP: LdapSettings = {
 
 // ── Page ───────────────────────────────────────────
 export function Settings() {
+  const { t, i18n } = useTranslation();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,12 +77,12 @@ export function Settings() {
     } catch (err) {
       setError(
         (err as { message?: string })?.message ??
-          "도메인 정보를 불러오지 못했습니다",
+          t("settings:error_load"),
       );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchStats();
@@ -106,7 +110,7 @@ export function Settings() {
     setLdapDirty(false);
     setToast({
       type: "success",
-      message: "연결 설정이 저장되었습니다 (로컬)",
+      message: t("settings:toast_connection_saved"),
     });
   }
 
@@ -129,9 +133,9 @@ export function Settings() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      setToast({ type: "success", message: "구성을 내보냈습니다" });
+      setToast({ type: "success", message: t("settings:toast_config_exported") });
     } catch {
-      setToast({ type: "error", message: "내보내기에 실패했습니다" });
+      setToast({ type: "error", message: t("settings:toast_export_failed") });
     }
   }
 
@@ -139,7 +143,7 @@ export function Settings() {
     // Placeholder — wire to file input in a real impl
     setToast({
       type: "success",
-      message: "구성 가져오기는 추후 지원될 예정입니다",
+      message: t("settings:toast_import_unsupported"),
     });
   }
 
@@ -148,9 +152,11 @@ export function Settings() {
     <div className="space-y-4">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-primary">시스템 설정</h1>
+        <h1 className="text-xl font-bold text-primary">
+          {t("settings:title")}
+        </h1>
         <p className="mt-0.5 text-sm text-secondary">
-          시스템 정보, 도메인 및 연결 설정을 관리합니다
+          {t("settings:subtitle")}
         </p>
       </div>
 
@@ -163,7 +169,7 @@ export function Settings() {
             onClick={fetchStats}
             className="ml-auto rounded px-2 py-1 text-xs hover:bg-red/10"
           >
-            재시도
+            {t("settings:btn_retry")}
           </button>
         </div>
       )}
@@ -174,22 +180,24 @@ export function Settings() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {/* ── 시스템 정보 ─────────────────────────── */}
+          {/* ── System Information ─────────────────── */}
           <SectionCard
             icon={Cpu}
             iconTone="blue"
-            title="시스템 정보"
-            subtitle="애플리케이션 및 런타임 정보"
+            title={t("settings:section_system_info")}
+            subtitle={t("settings:section_system_info_sub")}
           >
             <InfoGrid>
               <InfoItem
                 icon={Boxes}
-                label="앱 버전"
-                value={`v${SYSTEM_INFO.appVersion}`}
+                label={t("settings:label_app_version")}
+                value={t("settings:value_app_version", {
+                  version: SYSTEM_INFO.appVersion,
+                })}
               />
               <InfoItem
                 icon={SettingsIcon}
-                label="실행 모드"
+                label={t("settings:label_run_mode")}
                 value={
                   <span className="badge bg-blue/10 text-blue">
                     {SYSTEM_INFO.mode.toUpperCase()}
@@ -198,30 +206,30 @@ export function Settings() {
               />
               <InfoItem
                 icon={Info}
-                label="Python 버전"
+                label={t("settings:label_python_version")}
                 value={SYSTEM_INFO.pythonVersion}
                 mono
               />
               <InfoItem
                 icon={HardDrive}
-                label="Samba 버전"
+                label={t("settings:label_samba_version")}
                 value={SYSTEM_INFO.sambaVersion}
                 mono
               />
             </InfoGrid>
           </SectionCard>
 
-          {/* ── 도메인 정보 ─────────────────────────── */}
+          {/* ── Domain Information ─────────────────── */}
           <SectionCard
             icon={Globe}
             iconTone="green"
-            title="도메인 정보"
-            subtitle="현재 Active Directory 도메인 구성"
+            title={t("settings:section_domain_info")}
+            subtitle={t("settings:section_domain_info_sub")}
           >
             <InfoGrid>
               <InfoItem
                 icon={Globe}
-                label="도메인 이름"
+                label={t("settings:label_domain_name")}
                 value={stats?.domain_controllers?.length
                   ? deriveDomainName(stats)
                   : "corp.example.com"}
@@ -229,13 +237,13 @@ export function Settings() {
               />
               <InfoItem
                 icon={Network}
-                label="NetBIOS 이름"
+                label={t("settings:label_netbios_name")}
                 value={deriveNetbiosName(stats)}
                 mono
               />
               <InfoItem
                 icon={ShieldCheck}
-                label="기능 수준"
+                label={t("settings:label_functional_level")}
                 value={
                   stats?.domain_functional_level ||
                   stats?.forest_functional_level ||
@@ -244,10 +252,12 @@ export function Settings() {
               />
               <InfoItem
                 icon={Server}
-                label="도메인 컨트롤러"
+                label={t("settings:label_domain_controllers")}
                 value={
                   stats?.domain_controllers?.length
-                    ? `${stats.domain_controllers.length}대`
+                    ? t("settings:value_dc_count", {
+                        count: stats.domain_controllers.length,
+                      })
                     : "—"
                 }
               />
@@ -256,7 +266,7 @@ export function Settings() {
             {stats?.domain_controllers?.length ? (
               <div className="mt-3">
                 <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted">
-                  컨트롤러 목록
+                  {t("settings:controllers_list")}
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {stats.domain_controllers.map((dc) => (
@@ -273,50 +283,50 @@ export function Settings() {
             ) : null}
           </SectionCard>
 
-          {/* ── 연결 설정 ───────────────────────────── */}
+          {/* ── Connection Settings ────────────────── */}
           <SectionCard
             icon={Database}
             iconTone="purple"
-            title="연결 설정"
-            subtitle="LDAP 서버 연결 구성"
+            title={t("settings:section_connection")}
+            subtitle={t("settings:section_connection_sub")}
             className="lg:col-span-2"
           >
             <form onSubmit={saveLdap} className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <Field label="LDAP 호스트">
+                <Field label={t("settings:label_ldap_host")}>
                   <input
                     className="input font-mono"
                     value={ldap.host}
                     onChange={(e) => setLdapField("host", e.target.value)}
-                    placeholder="127.0.0.1"
+                    placeholder={t("settings:ph_ldap_host")}
                   />
                 </Field>
 
-                <Field label="포트">
+                <Field label={t("settings:label_port")}>
                   <input
                     type="number"
                     className="input font-mono"
                     value={ldap.port}
                     onChange={(e) => setLdapField("port", e.target.value)}
-                    placeholder="389"
+                    placeholder={t("settings:ph_port")}
                   />
                 </Field>
 
-                <Field label="Bind DN">
+                <Field label={t("settings:label_bind_dn")}>
                   <input
                     className="input font-mono text-xs"
                     value={ldap.bindDn}
                     onChange={(e) => setLdapField("bindDn", e.target.value)}
-                    placeholder="CN=Administrator,CN=Users,DC=..."
+                    placeholder={t("settings:ph_bind_dn")}
                   />
                 </Field>
 
-                <Field label="Base DN">
+                <Field label={t("settings:label_base_dn")}>
                   <input
                     className="input font-mono text-xs"
                     value={ldap.baseDn}
                     onChange={(e) => setLdapField("baseDn", e.target.value)}
-                    placeholder="DC=corp,DC=example,DC=com"
+                    placeholder={t("settings:ph_base_dn")}
                   />
                 </Field>
               </div>
@@ -324,42 +334,75 @@ export function Settings() {
               <div className="flex items-center justify-between border-t border-border-subtle pt-3">
                 <p className="flex items-center gap-1.5 text-xs text-muted">
                   <Info size={12} />
-                  설정은 현재 세션에만 적용됩니다
+                  {t("settings:connection_session_note")}
                 </p>
                 <button
                   type="submit"
                   className="btn-primary disabled:opacity-50"
                   disabled={!ldapDirty}
                 >
-                  <Save size={16} /> 저장
+                  <Save size={16} /> {t("settings:btn_save")}
                 </button>
               </div>
             </form>
           </SectionCard>
 
-          {/* ── 백업/복원 ─────────────────────────── */}
+          {/* ── Backup / Restore ───────────────────── */}
           <SectionCard
             icon={ShieldCheck}
             iconTone="yellow"
-            title="백업 / 복원"
-            subtitle="구성 데이터 내보내기 및 가져오기"
+            title={t("settings:section_backup_restore")}
+            subtitle={t("settings:section_backup_restore_sub")}
             className="lg:col-span-2"
           >
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <ActionTile
                 icon={Download}
-                title="구성 내보내기"
-                description="현재 시스템 구성을 JSON 파일로 다운로드합니다"
-                buttonLabel="내보내기"
+                title={t("settings:tile_export_title")}
+                description={t("settings:tile_export_desc")}
+                buttonLabel={t("settings:tile_export_button")}
                 onClick={handleExport}
               />
               <ActionTile
                 icon={Upload}
-                title="구성 가져오기"
-                description="이전에 내보낸 구성 파일을 복원합니다"
-                buttonLabel="가져오기"
+                title={t("settings:tile_import_title")}
+                description={t("settings:tile_import_desc")}
+                buttonLabel={t("settings:tile_import_button")}
                 onClick={handleImport}
               />
+            </div>
+          </SectionCard>
+
+          {/* ── Language ────────────────────────────── */}
+          <SectionCard
+            icon={Languages}
+            iconTone="blue"
+            title={t("settings:section_language")}
+            subtitle={t("settings:section_language_sub")}
+            className="lg:col-span-2"
+          >
+            <div className="flex items-center justify-between border-t border-border-subtle pt-3">
+              <p className="flex items-center gap-1.5 text-xs text-muted">
+                <Languages size={12} />
+                {t("settings:label_language")}
+              </p>
+              <select
+                value={i18n.language}
+                onChange={(e) => {
+                  i18n.changeLanguage(e.target.value);
+                  setToast({
+                    type: "success",
+                    message: t("settings:toast_language_changed"),
+                  });
+                }}
+                className="input"
+              >
+                {Object.entries(LANGUAGES).map(([code, name]) => (
+                  <option key={code} value={code}>
+                    {name}
+                  </option>
+                ))}
+              </select>
             </div>
           </SectionCard>
         </div>

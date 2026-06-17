@@ -36,7 +36,7 @@ def list_computers(
         None, alias="status", description="active|inactive|stale"
     ),
     page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=500),
+    page_size: int = Query(20, alias="page_size", ge=1, le=500),
     directory: DirectoryBackend = Depends(get_directory),
 ) -> Page[ComputerSummary]:
     items, total = directory.list_computers(
@@ -44,9 +44,9 @@ def list_computers(
         os_filter=os_filter,
         status=status_filter,
         page=page,
-        limit=limit,
+        limit=page_size,
     )
-    return Page.of(items, total, page, limit)
+    return Page.of(items, total, page, page_size)
 
 
 @router.get("/stats", response_model=ComputerStats)

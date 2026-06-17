@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ShieldCheck,
   ArrowRight,
@@ -17,14 +18,8 @@ interface Props {
   onDone: () => void;
 }
 
-const STEPS = [
-  { id: 0, label: "환영" },
-  { id: 1, label: "도메인 정보" },
-  { id: 2, label: "관리자 계정" },
-  { id: 3, label: "구축 실행" },
-];
-
 export function SetupWizard({ onDone }: Props) {
+  const { t } = useTranslation();
   const [step, setStep] = useState(0);
   const [domainName, setDomainName] = useState("corp.example.com");
   const [netbiosName, setNetbiosName] = useState("CORP");
@@ -35,15 +30,22 @@ export function SetupWizard({ onDone }: Props) {
   const [provisioning, setProvisioning] = useState(false);
   const [result, setResult] = useState<ProvisionResult | null>(null);
 
+  const STEPS = [
+    { id: 0, label: t("setup:step_welcome") },
+    { id: 1, label: t("setup:step_domain_info") },
+    { id: 2, label: t("setup:step_admin_account") },
+    { id: 3, label: t("setup:step_provision") },
+  ];
+
   // ── Step validators ───────────────────────────────
   function validateStep1(): boolean {
     const e: Record<string, string> = {};
     if (!/^[a-z0-9-]+\.[a-z0-9.-]+$/i.test(domainName))
-      e.domainName = "올바른 FQDN을 입력하세요 (예: corp.example.com)";
+      e.domainName = t("setup:validation_fqdn");
     if (!/^[A-Z][A-Z0-9-]{1,14}$/.test(netbiosName))
-      e.netbiosName = "2~15자 대문자, 숫자 (예: CORP)";
+      e.netbiosName = t("setup:validation_netbios");
     if (dnsForwarder && !/^(\d{1,3}\.){3}\d{1,3}$/.test(dnsForwarder))
-      e.dnsForwarder = "올바른 IP 주소를 입력하세요";
+      e.dnsForwarder = t("setup:validation_ip");
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -51,9 +53,9 @@ export function SetupWizard({ onDone }: Props) {
   function validateStep2(): boolean {
     const e: Record<string, string> = {};
     if (adminPassword.length < 8)
-      e.adminPassword = "비밀번호는 8자 이상이어야 합니다";
+      e.adminPassword = t("setup:validation_password_min");
     if (adminPassword !== confirmPassword)
-      e.confirmPassword = "비밀번호가 일치하지 않습니다";
+      e.confirmPassword = t("setup:validation_password_mismatch");
     // Complexity check
     if (
       adminPassword.length >= 8 &&
@@ -62,7 +64,7 @@ export function SetupWizard({ onDone }: Props) {
         !/[0-9]/.test(adminPassword) ||
         !/[^A-Za-z0-9]/.test(adminPassword))
     )
-      e.adminPassword = "대문자, 소문자, 숫자, 특수문자 각각 1개 이상 필요";
+      e.adminPassword = t("setup:validation_password_complexity");
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -86,7 +88,7 @@ export function SetupWizard({ onDone }: Props) {
         setStep(3);
       }
     } catch (err: any) {
-      setErrors({ submit: err.message || "구축 실패" });
+      setErrors({ submit: err.message || t("setup:toast_provision_failed") });
     } finally {
       setProvisioning(false);
     }
@@ -112,10 +114,8 @@ export function SetupWizard({ onDone }: Props) {
           <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-blue text-white">
             <ShieldCheck size={28} />
           </div>
-          <h1 className="text-xl font-bold text-primary">AD Manager Setup</h1>
-          <p className="mt-1 text-sm text-secondary">
-            Samba 4 Active Directory 도메인 컨트롤러 구축
-          </p>
+          <h1 className="text-xl font-bold text-primary">{t("setup:title_app")}</h1>
+          <p className="mt-1 text-sm text-secondary">{t("setup:subtitle")}</p>
         </div>
 
         {/* Step indicator */}
@@ -156,15 +156,15 @@ export function SetupWizard({ onDone }: Props) {
           {/* Step 0: Welcome */}
           {step === 0 && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-primary">환영합니다</h2>
+              <h2 className="text-lg font-semibold text-primary">{t("setup:welcome_heading")}</h2>
               <p className="text-sm leading-relaxed text-secondary">
-                이 마법사는 새 Active Directory 도메인을 구축합니다. 다음이 필요합니다:
+                {t("setup:welcome_intro")}
               </p>
               <ul className="space-y-2 text-sm text-secondary">
                 {[
-                  { icon: Globe, text: "도메인 이름 (FQDN), 예: corp.example.com" },
-                  { icon: Server, text: "NetBIOS 이름, 예: CORP" },
-                  { icon: Lock, text: "관리자 비밀번호 (복잡성 요구)" },
+                  { icon: Globe, text: t("setup:welcome_item_fqdn") },
+                  { icon: Server, text: t("setup:welcome_item_netbios") },
+                  { icon: Lock, text: t("setup:welcome_item_password") },
                 ].map(({ icon: Icon, text }) => (
                   <li key={text} className="flex items-start gap-3">
                     <Icon size={18} className="mt-0.5 text-blue" />
@@ -173,8 +173,7 @@ export function SetupWizard({ onDone }: Props) {
                 ))}
               </ul>
               <div className="mt-4 rounded-md border border-yellow/30 bg-yellow/5 p-3 text-xs text-yellow">
-                <strong>주의:</strong> 구축 후 도메인 이름을 변경하기 어렵습니다.
-                신중하게 선택하세요.
+                <strong>{t("setup:notice_label")}</strong> {t("setup:notice_rename_warning")}
               </div>
             </div>
           )}
@@ -182,9 +181,9 @@ export function SetupWizard({ onDone }: Props) {
           {/* Step 1: Domain info */}
           {step === 1 && (
             <div className="space-y-5">
-              <h2 className="text-lg font-semibold text-primary">도메인 정보</h2>
+              <h2 className="text-lg font-semibold text-primary">{t("setup:heading_domain_info")}</h2>
               <div>
-                <label className="label">도메인 이름 (FQDN)</label>
+                <label className="label">{t("setup:label_domain_name")}</label>
                 <input
                   className="input font-mono"
                   value={domainName}
@@ -196,7 +195,7 @@ export function SetupWizard({ onDone }: Props) {
                 )}
               </div>
               <div>
-                <label className="label">NetBIOS 이름</label>
+                <label className="label">{t("setup:label_netbios_name")}</label>
                 <input
                   className="input font-mono uppercase"
                   value={netbiosName}
@@ -210,7 +209,7 @@ export function SetupWizard({ onDone }: Props) {
                 )}
               </div>
               <div>
-                <label className="label">DNS 포워더 (선택)</label>
+                <label className="label">{t("setup:label_dns_forwarder")}</label>
                 <input
                   className="input font-mono"
                   value={dnsForwarder}
@@ -228,16 +227,15 @@ export function SetupWizard({ onDone }: Props) {
           {step === 2 && (
             <div className="space-y-5">
               <h2 className="text-lg font-semibold text-primary">
-                도메인 관리자 계정
+                {t("setup:heading_admin_account")}
               </h2>
               <p className="text-sm text-secondary">
-                <code className="rounded bg-hover px-1.5 py-0.5 text-blue">
-                  {netbiosName}\Administrator
-                </code>{" "}
-                계정의 비밀번호를 설정합니다.
+                {t("setup:admin_account_desc", {
+                  account: `${netbiosName}\\Administrator`,
+                })}
               </p>
               <div>
-                <label className="label">관리자 비밀번호</label>
+                <label className="label">{t("setup:label_admin_password")}</label>
                 <input
                   type="password"
                   className="input"
@@ -249,7 +247,7 @@ export function SetupWizard({ onDone }: Props) {
                 )}
               </div>
               <div>
-                <label className="label">비밀번호 확인</label>
+                <label className="label">{t("setup:label_confirm_password")}</label>
                 <input
                   type="password"
                   className="input"
@@ -263,7 +261,7 @@ export function SetupWizard({ onDone }: Props) {
                 )}
               </div>
               <div className="rounded-md border border-border bg-hover/50 p-3 text-xs text-secondary">
-                복잡성 요구: 대문자, 소문자, 숫자, 특수문자 각각 1개 이상, 8자 이상
+                {t("setup:complexity_note")}
               </div>
               {errors.submit && (
                 <div className="flex items-center gap-2 rounded-md border border-red/30 bg-red/5 p-3 text-sm text-red">
@@ -280,13 +278,13 @@ export function SetupWizard({ onDone }: Props) {
               {step !== 3 && provisioning && (
                 <>
                   <h2 className="text-lg font-semibold text-primary">
-                    도메인 구축 중...
+                    {t("setup:heading_provisioning")}
                   </h2>
                   <div className="flex items-center justify-center py-12">
                     <Loader2 size={36} className="animate-spin text-blue" />
                   </div>
                   <p className="text-center text-sm text-secondary">
-                    samba-tool domain provision 실행 중. 30~60초 소요됩니다.
+                    {t("setup:provisioning_progress")}
                   </p>
                 </>
               )}
@@ -298,13 +296,10 @@ export function SetupWizard({ onDone }: Props) {
                       <Check size={32} className="text-green" />
                     </div>
                     <h2 className="text-lg font-semibold text-primary">
-                      도메인 구축 완료
+                      {t("setup:heading_done")}
                     </h2>
                     <p className="mt-1 text-sm text-secondary">
-                      <span className="font-mono text-blue">
-                        {result.domain_name}
-                      </span>{" "}
-                      도메인이 생성되었습니다.
+                      {t("setup:done_desc", { domain: result.domain_name })}
                     </p>
                   </div>
 
@@ -326,7 +321,11 @@ export function SetupWizard({ onDone }: Props) {
                             }`}
                           >
                             {s.status === "done" && <Check size={12} />}
-                            {s.status}
+                            {s.status === "done"
+                              ? t("setup:status_done")
+                              : s.status === "failed"
+                                ? t("setup:status_failed")
+                                : s.status}
                           </span>
                         </div>
                       ))}
@@ -334,7 +333,7 @@ export function SetupWizard({ onDone }: Props) {
                   )}
 
                   <button onClick={onDone} className="btn-primary w-full justify-center">
-                    대시보드로 이동 <ArrowRight size={16} />
+                    {t("setup:btn_go_dashboard")} <ArrowRight size={16} />
                   </button>
                 </>
               )}
@@ -349,20 +348,20 @@ export function SetupWizard({ onDone }: Props) {
                 disabled={step === 0}
                 className="btn-outline disabled:cursor-not-allowed disabled:opacity-40"
               >
-                <ArrowLeft size={16} /> 이전
+                <ArrowLeft size={16} /> {t("setup:btn_back")}
               </button>
               <button onClick={next} className="btn-primary">
-                다음 <ArrowRight size={16} />
+                {t("setup:btn_next")} <ArrowRight size={16} />
               </button>
             </div>
           )}
           {step === 2 && !provisioning && (
             <div className="mt-8 flex justify-between">
               <button onClick={back} className="btn-outline">
-                <ArrowLeft size={16} /> 이전
+                <ArrowLeft size={16} /> {t("setup:btn_back")}
               </button>
               <button onClick={next} className="btn-primary">
-                도메인 구축 <ArrowRight size={16} />
+                {t("setup:btn_provision")} <ArrowRight size={16} />
               </button>
             </div>
           )}

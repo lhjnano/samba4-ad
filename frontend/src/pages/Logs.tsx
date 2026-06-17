@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import {
   ScrollText,
   RefreshCw,
@@ -35,19 +37,15 @@ type Toast = { type: "success" | "error"; message: string } | null;
 
 type SeverityFilter = "all" | Severity;
 
-const SEVERITY_OPTIONS: { value: SeverityFilter; label: string }[] = [
-  { value: "all", label: "전체" },
-  { value: "info", label: "정보" },
-  { value: "warning", label: "경고" },
-  { value: "critical", label: "심각" },
-];
-
 // ── Helpers ────────────────────────────────────────
-function formatDate(iso: string | null | undefined): string {
+function formatDate(
+  iso: string | null | undefined,
+  locale: string,
+): string {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("ko-KR", {
+  return d.toLocaleString(locale, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -57,29 +55,29 @@ function formatDate(iso: string | null | undefined): string {
   });
 }
 
-function severityConfig(s: Severity) {
+function severityConfig(s: Severity, t: TFunction) {
   switch (s) {
     case "info":
       return {
-        label: "정보",
+        label: t("logs:severity_info"),
         cls: "bg-blue/10 text-blue",
         Icon: Info,
       };
     case "warning":
       return {
-        label: "경고",
+        label: t("logs:severity_warning"),
         cls: "bg-yellow/10 text-yellow",
         Icon: AlertTriangle,
       };
     case "critical":
       return {
-        label: "심각",
+        label: t("logs:severity_critical"),
         cls: "bg-red/10 text-red",
         Icon: OctagonAlert,
       };
     default:
       return {
-        label: s || "알 수 없음",
+        label: s || t("logs:severity_unknown"),
         cls: "bg-muted/15 text-muted",
         Icon: Info,
       };
@@ -88,6 +86,9 @@ function severityConfig(s: Severity) {
 
 // ── Page ───────────────────────────────────────────
 export function Logs() {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language === "ko" ? "ko-KR" : "en-US";
+
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -99,31 +100,46 @@ export function Logs() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
+  const severityOptions: { value: SeverityFilter; label: string }[] = useMemo(
+    () => [
+      { value: "all", label: t("logs:filter_all") },
+      { value: "info", label: t("logs:filter_info") },
+      { value: "warning", label: t("logs:filter_warning") },
+      { value: "critical", label: t("logs:filter_critical") },
+    ],
+    [t],
+  );
+
   // ── Fetch ────────────────────────────────────────
-  const fetchLogs = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    setError(null);
-    try {
-      const { data } = await api.get<Paginated<LogEntry>>(`${API_BASE}/logs`, {
-        params: { page: 1, page_size: PAGE_SIZE },
-      });
-      setLogs(data.items ?? []);
-      setLastUpdated(new Date());
-    } catch (err) {
-      setError(
-        (err as { message?: string })?.message ??
-          "감사 로그를 불러오지 못했습니다",
-      );
-      if (silent) {
-        setToast({
-          type: "error",
-          message: "자동 새로고침 중 오류가 발생했습니다",
-        });
+  const fetchLogs = useCallback(
+    async (silent = false) => {
+      if (!silent) setLoading(true);
+      setError(null);
+      try {
+        const { data } = await api.get<Paginated<LogEntry>>(
+          `${API_BASE}/logs`,
+          {
+            params: { page: 1, page_size: PAGE_SIZE },
+          },
+        );
+        setLogs(data.items ?? []);
+        setLastUpdated(new Date());
+      } catch (err) {
+        setError(
+          (err as { message?: string })?.message ?? t("logs:error_load"),
+        );
+        if (silent) {
+          setToast({
+            type: "error",
+            message: t("logs:toast_refresh_error"),
+          });
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [t],
+  );
 
   useEffect(() => {
     fetchLogs();
@@ -140,8 +156,8 @@ export function Logs() {
   // ── Auto-dismiss toast ───────────────────────────
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(t);
+    const id = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(id);
   }, [toast]);
 
   // ── Client-side filter ───────────────────────────
@@ -187,20 +203,20 @@ export function Logs() {
   const columns = [
     {
       key: "timestamp",
-      header: "시간",
+      header: t("logs:th_time"),
       className: "w-48 whitespace-nowrap",
       render: (r: LogEntry) => (
         <span className="font-mono text-xs text-secondary">
-          {formatDate(r.timestamp)}
+          {formatDate(r.timestamp, locale)}
         </span>
       ),
     },
     {
       key: "severity",
-      header: "심각도",
+      header: t("logs:th_severity"),
       className: "w-28",
       render: (r: LogEntry) => {
-        const cfg = severityConfig(r.severity);
+        const cfg = severityConfig(r.severity, t);
         const Icon = cfg.Icon;
         return (
           <span className={clsx("badge", cfg.cls)}>
@@ -212,7 +228,7 @@ export function Logs() {
     },
     {
       key: "message",
-      header: "메시지",
+      header: t("logs:th_message"),
       render: (r: LogEntry) => (
         <span className="text-sm text-primary">{r.message || "—"}</span>
       ),
@@ -225,10 +241,8 @@ export function Logs() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-primary">감사 로그</h1>
-          <p className="mt-0.5 text-sm text-secondary">
-            시스템 감사 이벤트를 확인합니다 · 10초마다 자동 새로고침
-          </p>
+          <h1 className="text-xl font-bold text-primary">{t("logs:title")}</h1>
+          <p className="mt-0.5 text-sm text-secondary">{t("logs:subtitle")}</p>
         </div>
         <button
           className="btn-outline"
@@ -240,7 +254,7 @@ export function Logs() {
           ) : (
             <RefreshCw size={16} />
           )}
-          새로고침
+          {t("logs:btn_refresh")}
         </button>
       </div>
 
@@ -248,19 +262,19 @@ export function Logs() {
       <div className="grid grid-cols-3 gap-3">
         <SummaryCard
           icon={Info}
-          label="정보"
+          label={t("logs:severity_info")}
           count={counts.info}
           tone="blue"
         />
         <SummaryCard
           icon={AlertTriangle}
-          label="경고"
+          label={t("logs:severity_warning")}
           count={counts.warning}
           tone="yellow"
         />
         <SummaryCard
           icon={OctagonAlert}
-          label="심각"
+          label={t("logs:severity_critical")}
           count={counts.critical}
           tone="red"
         />
@@ -270,7 +284,7 @@ export function Logs() {
       <div className="flex flex-wrap items-center gap-3">
         {/* Severity segmented control */}
         <div className="flex rounded-md border border-border bg-card p-0.5">
-          {SEVERITY_OPTIONS.map((opt) => (
+          {severityOptions.map((opt) => (
             <button
               key={opt.value}
               onClick={() => setSeverity(opt.value)}
@@ -300,7 +314,9 @@ export function Logs() {
               onChange={(e) => setFromDate(e.target.value)}
             />
           </div>
-          <span className="text-xs text-muted">~</span>
+          <span className="text-xs text-muted">
+            {t("logs:date_range_separator")}
+          </span>
           <div className="relative">
             <Calendar
               size={14}
@@ -320,15 +336,17 @@ export function Logs() {
             onClick={resetFilters}
             className="text-xs text-muted transition-colors hover:text-primary"
           >
-            필터 초기화
+            {t("logs:btn_reset_filters")}
           </button>
         )}
 
         <div className="ml-auto flex items-center gap-1.5 text-xs text-muted">
           <Activity size={13} className="text-green" />
           {lastUpdated
-            ? `마지막 업데이트: ${lastUpdated.toLocaleTimeString("ko-KR")}`
-            : "업데이트 대기 중"}
+            ? t("logs:last_updated", {
+                time: lastUpdated.toLocaleTimeString(locale),
+              })
+            : t("logs:waiting_for_update")}
         </div>
       </div>
 
@@ -341,7 +359,7 @@ export function Logs() {
             onClick={() => fetchLogs()}
             className="ml-auto rounded px-2 py-1 text-xs hover:bg-red/10"
           >
-            재시도
+            {t("logs:btn_retry")}
           </button>
         </div>
       )}
@@ -351,11 +369,11 @@ export function Logs() {
         {filteredLogs.length === 0 && !loading && !error ? (
           <EmptyState
             icon={ScrollText}
-            title="로그가 없습니다"
+            title={t("logs:empty_no_logs_title")}
             description={
               hasActiveFilters
-                ? "선택한 조건에 해당하는 로그가 없습니다."
-                : "기록된 감사 이벤트가 없습니다."
+                ? t("logs:empty_no_logs_filtered")
+                : t("logs:empty_no_logs_recorded")
             }
           />
         ) : (
@@ -363,7 +381,7 @@ export function Logs() {
             columns={columns}
             data={filteredLogs}
             loading={loading}
-            emptyMessage="로그가 없습니다"
+            emptyMessage={t("logs:empty_no_logs")}
           />
         )}
       </div>

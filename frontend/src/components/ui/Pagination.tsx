@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { clsx } from "clsx";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   page: number;
@@ -8,12 +9,14 @@ interface Props {
 }
 
 export function Pagination({ page, totalPages, onPageChange }: Props) {
+  const { t } = useTranslation();
+
   if (totalPages <= 1) return null;
 
   return (
     <div className="flex items-center justify-between pt-3">
       <span className="text-xs text-muted">
-        페이지 {page} / {totalPages}
+        {t("common:pagination_page", { page, total: totalPages })}
       </span>
       <div className="flex gap-1">
         <button

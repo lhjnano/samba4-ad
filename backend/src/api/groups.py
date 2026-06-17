@@ -37,13 +37,13 @@ def list_groups(
     category: str | None = Query(None, description="security|distribution"),
     scope: str | None = Query(None, description="domain|global|universal"),
     page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=500),
+    page_size: int = Query(20, alias="page_size", ge=1, le=500),
     directory: DirectoryBackend = Depends(get_directory),
 ) -> Page[GroupSummary]:
     items, total = directory.list_groups(
-        q=q, category=category, scope=scope, page=page, limit=limit
+        q=q, category=category, scope=scope, page=page, limit=page_size
     )
-    return Page.of(items, total, page, limit)
+    return Page.of(items, total, page, page_size)
 
 
 @router.get("/stats", response_model=GroupStats)

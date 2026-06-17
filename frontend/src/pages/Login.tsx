@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ShieldCheck, Loader2, AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
 
 export function Login() {
+  const { t } = useTranslation();
   const { login } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState("admin");
@@ -33,14 +35,14 @@ export function Login() {
           <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-blue text-white">
             <ShieldCheck size={28} />
           </div>
-          <h1 className="text-xl font-bold text-primary">AD Manager</h1>
-          <p className="mt-1 text-sm text-secondary">Active Directory 도메인 관리</p>
+          <h1 className="text-xl font-bold text-primary">{t("common:app_name")}</h1>
+          <p className="mt-1 text-sm text-secondary">{t("common:login_subtitle")}</p>
         </div>
 
         {/* Form card */}
         <form onSubmit={handleSubmit} className="card space-y-5 p-6">
           <div>
-            <label className="label">사용자 이름</label>
+            <label className="label">{t("common:username")}</label>
             <input
               type="text"
               className="input"
@@ -52,7 +54,7 @@ export function Login() {
           </div>
 
           <div>
-            <label className="label">비밀번호</label>
+            <label className="label">{t("common:password")}</label>
             <input
               type="password"
               className="input"
@@ -77,16 +79,16 @@ export function Login() {
             {loading ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
-                로그인 중...
+                {t("common:logging_in")}
               </>
             ) : (
-              "로그인"
+              t("common:login_btn")
             )}
           </button>
         </form>
 
         <p className="mt-4 text-center text-xs text-muted">
-          기본 계정: <code className="font-mono text-secondary">admin / admin</code> (mock 모드)
+          {t("common:default_account_hint", { creds: "admin / admin" })}
         </p>
       </div>
     </div>

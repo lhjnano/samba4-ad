@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { api } from "./api/client";
 import type { SetupStatus } from "./types/api";
@@ -26,11 +27,12 @@ const queryClient = new QueryClient({
 
 function AppRoutes() {
   const { user, loading } = useAuth();
+  const { t } = useTranslation();
 
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-root">
-        <div className="text-secondary">Loading...</div>
+        <div className="text-secondary">{t("common:loading")}</div>
       </div>
     );
   }
@@ -62,9 +64,9 @@ function AppRoutes() {
           path="*"
           element={
             <div className="p-8 text-secondary">
-              Page not found.{" "}
+              {t("common:page_not_found")}{" "}
               <a href="/dashboard" className="text-blue">
-                Go to Dashboard
+                {t("common:go_to_dashboard")}
               </a>
             </div>
           }
@@ -75,6 +77,7 @@ function AppRoutes() {
 }
 
 export default function App() {
+  const { t } = useTranslation();
   const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null);
   const [setupLoading, setSetupLoading] = useState(true);
 
@@ -89,7 +92,7 @@ export default function App() {
   if (setupLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-root">
-        <div className="text-secondary">Loading...</div>
+        <div className="text-secondary">{t("common:loading")}</div>
       </div>
     );
   }

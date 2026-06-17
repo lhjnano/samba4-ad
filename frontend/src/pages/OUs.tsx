@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Search,
   FolderPlus,
@@ -55,6 +56,8 @@ function formatDate(iso: string | null | undefined): string {
 
 // ── Page ───────────────────────────────────────────
 export function OUs() {
+  const { t } = useTranslation();
+
   // List state
   const [ous, setOUs] = useState<ADOU[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,11 +89,11 @@ export function OUs() {
 
   // ── Debounced search ─────────────────────────────
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setDebouncedSearch(search.trim());
       setPage(1);
     }, 350);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [search]);
 
   // ── Fetch list ───────────────────────────────────
@@ -112,12 +115,12 @@ export function OUs() {
     } catch (err) {
       setError(
         (err as { message?: string })?.message ??
-          "OU 목록을 불러오지 못했습니다",
+          t("ous:error_load_list"),
       );
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch]);
+  }, [page, debouncedSearch, t]);
 
   useEffect(() => {
     fetchOUs();
@@ -126,8 +129,8 @@ export function OUs() {
   // ── Auto-dismiss toast ───────────────────────────
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timer);
   }, [toast]);
 
   // ── Detail ───────────────────────────────────────
@@ -149,13 +152,13 @@ export function OUs() {
     setActionLoading("delete");
     try {
       await api.delete(`${API_BASE}/ou/${selectedOU.id}`);
-      setToast({ type: "success", message: "OU가 삭제되었습니다" });
+      setToast({ type: "success", message: t("ous:toast_ou_deleted") });
       closeDetail();
       fetchOUs();
     } catch (err) {
       setToast({
         type: "error",
-        message: (err as { message?: string })?.message ?? "삭제에 실패했습니다",
+        message: (err as { message?: string })?.message ?? t("ous:toast_delete_failed"),
       });
     } finally {
       setActionLoading(null);
@@ -176,7 +179,7 @@ export function OUs() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!form.name.trim()) errs.name = "OU 이름을 입력하세요";
+    if (!form.name.trim()) errs.name = t("ous:validation_name_required");
     setFormErrors(errs);
     if (Object.keys(errs).length) return;
 
@@ -188,7 +191,7 @@ export function OUs() {
         parent_dn: form.parent_dn.trim() || undefined,
       };
       await api.post<ADOU>(`${API_BASE}/ou`, body);
-      setToast({ type: "success", message: "OU가 생성되었습니다" });
+      setToast({ type: "success", message: t("ous:toast_ou_created") });
       setCreateOpen(false);
       setForm(EMPTY_FORM);
       setFormErrors({});
@@ -196,7 +199,7 @@ export function OUs() {
     } catch (err) {
       setToast({
         type: "error",
-        message: (err as { message?: string })?.message ?? "OU 생성에 실패했습니다",
+        message: (err as { message?: string })?.message ?? t("ous:toast_ou_create_failed"),
       });
     } finally {
       setSubmitting(false);
@@ -209,7 +212,7 @@ export function OUs() {
   const columns = [
     {
       key: "name",
-      header: "이름",
+      header: t("ous:th_name"),
       render: (o: ADOU) => (
         <div className="flex items-center gap-2.5">
           <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-blue/15 text-blue">
@@ -221,7 +224,7 @@ export function OUs() {
     },
     {
       key: "description",
-      header: "설명",
+      header: t("ous:th_description"),
       render: (o: ADOU) => (
         <span
           className="block max-w-[280px] truncate text-secondary"
@@ -233,7 +236,7 @@ export function OUs() {
     },
     {
       key: "child_ous",
-      header: "하위 OU",
+      header: t("ous:th_child_ous"),
       render: (o: ADOU) => (
         <span className="font-mono text-primary">
           {o.child_ous?.toLocaleString() ?? 0}
@@ -242,7 +245,7 @@ export function OUs() {
     },
     {
       key: "user_count",
-      header: "사용자 수",
+      header: t("ous:th_user_count"),
       render: (o: ADOU) => (
         <span className="font-mono text-primary">
           {o.user_count?.toLocaleString() ?? 0}
@@ -251,7 +254,7 @@ export function OUs() {
     },
     {
       key: "computer_count",
-      header: "컴퓨터 수",
+      header: t("ous:th_computer_count"),
       render: (o: ADOU) => (
         <span className="font-mono text-primary">
           {o.computer_count?.toLocaleString() ?? 0}
@@ -266,9 +269,9 @@ export function OUs() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-primary">조직 단위 관리</h1>
+          <h1 className="text-xl font-bold text-primary">{t("ous:title")}</h1>
           <p className="mt-0.5 text-sm text-secondary">
-            총 {total.toLocaleString()}개의 조직 단위
+            {t("ous:subtitle_count", { count: total.toLocaleString() })}
           </p>
         </div>
       </div>
@@ -282,14 +285,14 @@ export function OUs() {
           />
           <input
             className="input pl-9"
-            placeholder="OU 이름 검색"
+            placeholder={t("ous:ph_search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
         <button className="btn-primary" onClick={openCreate}>
-          <FolderPlus size={16} /> OU 추가
+          <FolderPlus size={16} /> {t("ous:btn_add_ou")}
         </button>
       </div>
 
@@ -302,7 +305,7 @@ export function OUs() {
             onClick={fetchOUs}
             className="ml-auto rounded px-2 py-1 text-xs hover:bg-red/10"
           >
-            재시도
+            {t("ous:btn_retry")}
           </button>
         </div>
       )}
@@ -312,11 +315,11 @@ export function OUs() {
         {!loading && !visibleOUs.length ? (
           <EmptyState
             icon={FolderTree}
-            title="OU가 없습니다"
+            title={t("ous:empty_no_ous_title")}
             description={
               debouncedSearch
-                ? "검색 조건에 일치하는 조직 단위가 없습니다."
-                : "등록된 조직 단위가 없습니다."
+                ? t("ous:empty_no_ous_filtered")
+                : t("ous:empty_no_ous_registered")
             }
           />
         ) : (
@@ -324,7 +327,7 @@ export function OUs() {
             columns={columns}
             data={visibleOUs}
             loading={loading}
-            emptyMessage="OU가 없습니다"
+            emptyMessage={t("ous:empty_no_ous")}
             onRowClick={openDetail}
           />
         )}
@@ -341,7 +344,7 @@ export function OUs() {
       <Drawer
         open={detailOpen}
         onClose={closeDetail}
-        title="조직 단위 상세"
+        title={t("ous:drawer_title_detail")}
         width="lg"
       >
         {selectedOU && (
@@ -363,33 +366,33 @@ export function OUs() {
                 </p>
                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                   <span className="badge bg-blue/10 text-blue">
-                    하위 OU {selectedOU.child_ous?.toLocaleString() ?? 0}개
+                    {t("ous:badge_child_ous", { count: selectedOU.child_ous ?? 0 })}
                   </span>
                   <span className="badge bg-green/10 text-green">
-                    사용자 {selectedOU.user_count?.toLocaleString() ?? 0}명
+                    {t("ous:badge_users", { count: selectedOU.user_count ?? 0 })}
                   </span>
                   <span className="badge bg-purple/10 text-purple">
-                    컴퓨터 {selectedOU.computer_count?.toLocaleString() ?? 0}대
+                    {t("ous:badge_computers", { count: selectedOU.computer_count ?? 0 })}
                   </span>
                 </div>
               </div>
             </div>
 
             {/* Basic info */}
-            <DetailSection title="기본 정보">
+            <DetailSection title={t("ous:section_basic_info")}>
               <InfoRow
                 icon={FolderTree}
-                label="이름"
+                label={t("ous:label_name")}
                 value={selectedOU.name}
               />
               <InfoRow
                 icon={Info}
-                label="설명"
+                label={t("ous:label_description")}
                 value={selectedOU.description}
               />
               <InfoRow
                 icon={Network}
-                label="고유 이름 (DN)"
+                label={t("ous:label_dn")}
                 value={selectedOU.dn}
                 mono
               />
@@ -397,7 +400,7 @@ export function OUs() {
 
             {/* GPO Links */}
             <DetailSection
-              title={`연결된 GPO (${selectedOU.gpo_links?.length ?? 0})`}
+              title={t("ous:section_gpo_links", { count: selectedOU.gpo_links?.length ?? 0 })}
             >
               {selectedOU.gpo_links?.length ? (
                 <div className="flex flex-wrap gap-1.5 p-4">
@@ -415,21 +418,21 @@ export function OUs() {
                 <div className="p-2">
                   <EmptyState
                     icon={Link2}
-                    title="연결된 GPO가 없습니다"
-                    description="이 조직 단위에 연결된 그룹 정책 개체가 없습니다."
+                    title={t("ous:empty_no_gpo_links_title")}
+                    description={t("ous:empty_no_gpo_links_desc")}
                   />
                 </div>
               )}
             </DetailSection>
 
             {/* Danger zone */}
-            <DetailSection title="OU 관리">
+            <DetailSection title={t("ous:section_ou_management")}>
               <div className="space-y-2 p-4">
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
                   className="btn-danger w-full justify-center"
                 >
-                  <Trash2 size={16} /> OU 삭제
+                  <Trash2 size={16} /> {t("ous:btn_delete_ou")}
                 </button>
 
                 {showDeleteConfirm && (
@@ -440,9 +443,7 @@ export function OUs() {
                         className="mt-0.5 flex-shrink-0"
                       />
                       <p>
-                        정말 <strong>{selectedOU.name}</strong> 조직 단위를
-                        삭제하시겠습니까? 하위 개체에 영향을 줄 수 있으며 이
-                        작업은 되돌릴 수 없습니다.
+                        {t("ous:confirm_delete_ou", { name: selectedOU.name })}
                       </p>
                     </div>
                     <div className="mt-2 flex gap-2">
@@ -450,7 +451,7 @@ export function OUs() {
                         onClick={() => setShowDeleteConfirm(false)}
                         className="btn-outline flex-1 justify-center"
                       >
-                        취소
+                        {t("ous:btn_cancel")}
                       </button>
                       <button
                         onClick={handleDelete}
@@ -462,7 +463,7 @@ export function OUs() {
                         ) : (
                           <Trash2 size={16} />
                         )}
-                        삭제 확인
+                        {t("ous:btn_delete_confirm")}
                       </button>
                     </div>
                   </div>
@@ -477,39 +478,39 @@ export function OUs() {
       <Drawer
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        title="조직 단위 추가"
+        title={t("ous:drawer_title_create")}
         width="lg"
       >
         <form onSubmit={handleCreate} className="space-y-5">
-          <Field label="OU 이름 *" error={formErrors.name}>
+          <Field label={t("ous:label_name_required")} error={formErrors.name}>
             <input
               className="input font-mono"
               value={form.name}
               onChange={(e) => setField("name", e.target.value)}
-              placeholder="Staff"
+              placeholder={t("ous:ph_name")}
               autoComplete="off"
             />
           </Field>
 
-          <Field label="설명">
+          <Field label={t("ous:label_description_form")}>
             <input
               className="input"
               value={form.description}
               onChange={(e) => setField("description", e.target.value)}
-              placeholder="직원 조직 단위"
+              placeholder={t("ous:ph_description")}
               autoComplete="off"
             />
           </Field>
 
           <Field
-            label="상위 조직 단위 (DN)"
-            hint="비워두면 도메인 루트에 생성됩니다. 예: DC=corp,DC=example,DC=com"
+            label={t("ous:label_parent_dn")}
+            hint={t("ous:hint_parent_dn")}
           >
             <input
               className="input font-mono"
               value={form.parent_dn}
               onChange={(e) => setField("parent_dn", e.target.value)}
-              placeholder="OU=Departments,DC=corp,DC=example,DC=com"
+              placeholder={t("ous:ph_parent_dn")}
               autoComplete="off"
             />
           </Field>
@@ -520,7 +521,7 @@ export function OUs() {
               className="btn-outline"
               onClick={() => setCreateOpen(false)}
             >
-              취소
+              {t("ous:btn_cancel")}
             </button>
             <button
               type="submit"
@@ -529,11 +530,11 @@ export function OUs() {
             >
               {submitting ? (
                 <>
-                  <Loader2 size={16} className="animate-spin" /> 생성 중...
+                  <Loader2 size={16} className="animate-spin" /> {t("ous:btn_creating")}
                 </>
               ) : (
                 <>
-                  <FolderPlus size={16} /> 생성
+                  <FolderPlus size={16} /> {t("ous:btn_create")}
                 </>
               )}
             </button>

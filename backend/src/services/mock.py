@@ -102,14 +102,9 @@ def _ou_dn_from(dn: str) -> str:
 # Seed data
 # ---------------------------------------------------------------------------
 
-_DOMAIN = "DC=TEST,DC=LOCAL"
+_DOMAIN = "DC=CORP,DC=LOCAL"
 _OUS = [
-    ("개발팀", "dev team"),
-    ("마케팅팀", "marketing"),
-    ("인사팀", "human resources"),
-    ("영업팀", "sales"),
-    ("IT인프라팀", "it infrastructure"),
-    ("서버", "servers"),
+    ("Domain Controllers", "Default container for domain controllers"),
 ]
 
 
@@ -139,61 +134,44 @@ class MockDirectory:
                 "when_changed": _now() - timedelta(days=30),
             }
 
-        # --- Users ---
+        # --- Users (built-in accounts in CN=Users) ---
         self.users: dict[str, dict[str, Any]] = {}
-        departments = _OUS
-        first_names = ["김", "이", "박", "최", "정", "강", "조", "윤", "장", "임"]
-        given = [
-            "민준",
-            "서연",
-            "도윤",
-            "서준",
-            "하준",
-            "지우",
-            "하윤",
-            "지호",
-            "예준",
-            "지유",
+        builtin_users = [
+            ("Administrator", "Administrator", AccountStatus.ACTIVE),
+            ("Guest", "Guest", AccountStatus.INACTIVE),
+            ("krbtgt", "krbtgt", AccountStatus.INACTIVE),
         ]
-        statuses_cycle = [
-            AccountStatus.ACTIVE,
-            AccountStatus.ACTIVE,
-            AccountStatus.INACTIVE,
-            AccountStatus.LOCKED,
-        ]
-        for i in range(1, 41):  # 40 sample users (small but realistic)
-            dept = departments[i % len(departments)]
-            username = f"user{i:04d}"
-            dn = f"CN={username},OU={dept[0]},{_DOMAIN}"
-            status = statuses_cycle[i % len(statuses_cycle)]
+        for i, (username, display, status) in enumerate(builtin_users, start=1):
+            dn = f"CN={username},CN=Users,{_DOMAIN}"
             uac = self._status_to_uac(status)
             self.users[dn] = {
                 "username": username,
-                "display_name": f"{first_names[i % 10]}{given[i % 10]}{i:02d}",
-                "first_name": given[i % 10],
-                "last_name": first_names[i % 10],
-                "email": f"{username}@test.local",
-                "phone": f"010-1000-{i:04d}",
+                "display_name": display,
+                "first_name": username,
+                "last_name": "",
+                "email": None,
+                "phone": None,
                 "dn": dn,
                 "user_account_control": uac,
-                "when_created": _now() - timedelta(days=i),
+                "when_created": _now() - timedelta(days=500),
                 "pwd_last_set": str(_now().timestamp()),
-                "last_logon": _now() - timedelta(hours=i),
+                "last_logon": None,
                 "object_sid": f"S-1-5-21-100-{i}",
                 "member_of": [],
                 "status": status,
             }
 
-        # --- Groups ---
+        # --- Groups (built-in domain groups in CN=Users) ---
         self.groups: dict[str, dict[str, Any]] = {}
         gdefs = [
-            ("Domain Users", GroupCategory.SECURITY, GroupScope.GLOBAL),
             ("Domain Admins", GroupCategory.SECURITY, GroupScope.GLOBAL),
-            ("개발팀", GroupCategory.SECURITY, GroupScope.GLOBAL),
-            ("마케팅팀", GroupCategory.SECURITY, GroupScope.GLOBAL),
-            ("VPN Users", GroupCategory.SECURITY, GroupScope.DOMAIN_LOCAL),
-            ("Git Access", GroupCategory.SECURITY, GroupScope.GLOBAL),
-            ("All Staff", GroupCategory.DISTRIBUTION, GroupScope.UNIVERSAL),
+            ("Domain Users", GroupCategory.SECURITY, GroupScope.GLOBAL),
+            ("Domain Guests", GroupCategory.SECURITY, GroupScope.GLOBAL),
+            ("Domain Computers", GroupCategory.SECURITY, GroupScope.GLOBAL),
+            ("Domain Controllers", GroupCategory.SECURITY, GroupScope.GLOBAL),
+            ("Enterprise Admins", GroupCategory.SECURITY, GroupScope.UNIVERSAL),
+            ("Schema Admins", GroupCategory.SECURITY, GroupScope.UNIVERSAL),
+            ("Cert Publishers", GroupCategory.SECURITY, GroupScope.GLOBAL),
         ]
         for idx, (name, cat, scope) in enumerate(gdefs):
             dn = f"CN={name},CN=Users,{_DOMAIN}"
@@ -209,51 +187,14 @@ class MockDirectory:
                 "object_sid": f"S-1-5-21-200-{idx}",
             }
 
-        # assign some memberships
-        for udn, udata in list(self.users.items())[:10]:
-            gname = "개발팀" if "개발팀" in udn else "Domain Users"
-            gdn = f"CN={gname},CN=Users,{_DOMAIN}"
-            if gdn in self.groups:
-                self.groups[gdn]["member"].append(udn)
-                udata["member_of"].append(gdn)
-                udata["member_of"].append(f"CN=Domain Users,CN=Users,{_DOMAIN}")
-
-        # --- Computers ---
+        # --- Computers (none joined yet) ---
         self.computers: dict[str, dict[str, Any]] = {}
-        os_choices = [
-            ("Windows 11", "10.0.22631", "win11"),
-            ("Windows 10", "10.0.19045", "win10"),
-            ("Ubuntu", "22.04 LTS", "linux"),
-            ("Windows Server 2022", "10.0.20348", "winserver"),
-        ]
-        host_prefix = ["DESKTOP", "WIN-PC", "SRV", "LAPTOP"]
-        for i in range(1, 25):
-            os_name, os_ver, _ = os_choices[i % len(os_choices)]
-            hostname = f"{host_prefix[i % len(host_prefix)]}-{i:03d}"
-            dn = f"CN={hostname},{_DOMAIN}"
-            last = _now() - timedelta(days=i * 4)
-            status = ComputerStatusEnum.ACTIVE if i % 5 else ComputerStatusEnum.STALE
-            self.computers[dn] = {
-                "hostname": hostname,
-                "dns_hostname": f"{hostname.lower()}.test.local",
-                "operating_system": os_name,
-                "operating_system_version": os_ver,
-                "dn": dn,
-                "user_account_control": UserAccountControl.WORKSTATION_TRUST_ACCOUNT,
-                "when_created": _now() - timedelta(days=i * 5),
-                "last_logon": last,
-                "object_sid": f"S-1-5-21-300-{i}",
-                "ip_address": f"192.168.1.{100 + i}",
-                "status": status,
-            }
 
-        # --- GPOs ---
+        # --- GPOs (default policies) ---
         self.gpos: dict[str, dict[str, Any]] = {}
         gpdefs = [
             ("Default Domain Policy", GpoStatus.ENABLED),
-            ("Password Policy", GpoStatus.ENABLED),
-            ("Security Baseline", GpoStatus.ENABLED),
-            ("Drive Mapping", GpoStatus.DISABLED),
+            ("Default Domain Controllers Policy", GpoStatus.ENABLED),
         ]
         for idx, (name, st) in enumerate(gpdefs):
             guid = "{" + str(uuid.uuid4()).upper() + "}"
@@ -271,12 +212,6 @@ class MockDirectory:
                 "wmi_filter": None,
                 "links": [],  # list of (ou_dn, enforced)
             }
-        # link a couple of GPOs to OUs
-        ou_dev = f"OU=개발팀,{_DOMAIN}"
-        gpo_pwd = next(
-            g for g in self.gpos.values() if g["display_name"] == "Password Policy"
-        )
-        gpo_pwd["links"].append((ou_dev, True))
 
         # --- Domain / policy ---
         self._password_policy = PasswordPolicy(
@@ -478,24 +413,16 @@ class MockDirectory:
             1 for u in self.users.values() if u["when_created"].date() == _now().date()
         )
         return UserStats(
-            total=len(self.users) + 12807,  # preview shows ~12847; mock adds realism
-            active=status_counts[AccountStatus.ACTIVE] + 12391,
+            total=len(self.users),
+            active=status_counts[AccountStatus.ACTIVE],
             inactive=status_counts[AccountStatus.INACTIVE],
             locked=status_counts[AccountStatus.LOCKED],
-            created_today=created_today or 23,
+            created_today=created_today,
         )
 
     def user_login_history(self, item_id: str) -> list[LoginEvent]:
         self._resolve(item_id)  # validate id exists
-        return [
-            LoginEvent(
-                hostname=f"DESKTOP-DEV-{i:02d}",
-                timestamp=_now() - timedelta(days=i, hours=2),
-                ip_address=f"192.168.10.{50 + i}",
-                success=i != 2,
-            )
-            for i in range(5)
-        ]
+        return []
 
     # ====================================================================
     # GROUPS
@@ -642,8 +569,8 @@ class MockDirectory:
             if any(m in self.groups for m in g["member"])
         )
         return GroupStats(
-            total=len(self.groups) + 280,
-            security=sec + 240,
+            total=len(self.groups),
+            security=sec,
             distribution=dist,
             nested=nested,
         )
@@ -754,10 +681,10 @@ class MockDirectory:
 
     def ou_stats(self) -> OuStats:
         return OuStats(
-            total=len(self.ous) + 12,
-            user_objects=len(self.users) + 12807,
-            computer_objects=len(self.computers) + 318,
-            linked_gpos=sum(len(g["links"]) for g in self.gpos.values()) + 11,
+            total=len(self.ous),
+            user_objects=len(self.users),
+            computer_objects=len(self.computers),
+            linked_gpos=sum(len(g["links"]) for g in self.gpos.values()),
         )
 
     # ====================================================================
@@ -833,28 +760,23 @@ class MockDirectory:
             for c in self.computers.values()
             if c["status"] == ComputerStatusEnum.STALE
         )
+        joined_today = sum(
+            1
+            for c in self.computers.values()
+            if c["when_created"].date() == _now().date()
+        )
         return ComputerStats(
-            total=len(self.computers) + 318,
-            active=active + 304,
-            inactive=2,
+            total=len(self.computers),
+            active=active,
+            inactive=len(self.computers) - active - stale,
             stale=stale,
-            joined_today=2,
+            joined_today=joined_today,
         )
 
     def computer_os_distribution(self) -> list[OsDistribution]:
         counts: dict[str, int] = {}
         for c in self.computers.values():
             counts[c["operating_system"]] = counts.get(c["operating_system"], 0) + 1
-        # blend with preview-scale numbers
-        preview = {
-            "Windows 11": 156,
-            "Windows 10": 98,
-            "Ubuntu": 45,
-            "Windows Server 2022": 28,
-            "기타": 15,
-        }
-        for os_name, base in preview.items():
-            counts[os_name] = counts.get(os_name, 0) + base
         return [OsDistribution(os=k, count=v) for k, v in counts.items()]
 
     def computer_join_trend(self) -> list[JoinTrendPoint]:
@@ -996,9 +918,9 @@ class MockDirectory:
     # ====================================================================
     def domain_info(self) -> DomainInfo:
         return DomainInfo(
-            fqdn="TEST.LOCAL",
-            netbios_name="TEST",
-            forest_name="TEST.LOCAL",
+            fqdn="CORP.LOCAL",
+            netbios_name="CORP",
+            forest_name="CORP.LOCAL",
             domain_functional_level="2012_R2",
             forest_functional_level="2012_R2",
             dc_hostname="srv-dc01",
@@ -1069,75 +991,13 @@ class MockDirectory:
     # DASHBOARD STATS
     # ====================================================================
     def login_trend(self, days: int = 7) -> list:
-        from src.models.stats import LoginTrendPoint
-
-        labels = ["월", "화", "수", "목", "금", "토", "일"]
-        success = [920, 880, 940, 910, 980, 420, 380]
-        fail = [12, 8, 15, 9, 22, 5, 3]
-        return [
-            LoginTrendPoint(date=day, success=ok, fail=bad)
-            for day, ok, bad in zip(
-                labels[:days], success[:days], fail[:days], strict=False
-            )
-        ]
+        return []
 
     def ou_distribution(self) -> list:
-        from src.models.stats import OuDistributionEntry
-
-        counts: dict[str, int] = {}
-        for u in self.users.values():
-            ou = _parent_ou_name(u["dn"])
-            counts[ou] = counts.get(ou, 0) + 1
-        # blend with preview-scale baseline
-        baseline = {
-            "개발팀": 3245,
-            "영업팀": 2876,
-            "마케팅팀": 2108,
-            "미할당": 1793,
-            "인사팀": 1532,
-            "IT인프라팀": 1204,
-            "서버": 89,
-        }
-        for k, v in baseline.items():
-            counts[k] = counts.get(k, 0) + v
-        return [OuDistributionEntry(ou=k, count=v) for k, v in counts.items()]
+        return []
 
     def recent_alerts(self, limit: int = 10) -> list:
-        from src.models.stats import AlertItem
-
-        alerts = [
-            AlertItem(
-                id="a1",
-                level="critical",
-                message="testuser003412 계정 잠금 (실패 5회)",
-                timestamp="5분 전",
-            ),
-            AlertItem(
-                id="a2",
-                level="warning",
-                message="12개 계정 비밀번호 7일 내 만료 예정",
-                timestamp="22분 전",
-            ),
-            AlertItem(
-                id="a3",
-                level="info",
-                message="WIN-PC042 도메인 조인 완료",
-                timestamp="1시간 전",
-            ),
-            AlertItem(
-                id="a4",
-                level="warning",
-                message="디스크 사용량 42% 임계값 근접",
-                timestamp="3시간 전",
-            ),
-            AlertItem(
-                id="a5",
-                level="info",
-                message="백업 완료: NTDS.dit (487MB)",
-                timestamp="6시간 전",
-            ),
-        ]
-        return alerts[:limit]
+        return []
 
 
 # Keep type-checkers happy: the class satisfies the protocol.

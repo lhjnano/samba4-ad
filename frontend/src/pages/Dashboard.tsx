@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Users,
   UsersRound,
@@ -26,6 +27,7 @@ import type {
 import { clsx } from "clsx";
 
 export function Dashboard() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [health, setHealth] = useState<SystemHealth | null>(null);
   const [services, setServices] = useState<ServicesStatus[]>([]);
@@ -51,15 +53,15 @@ export function Dashboard() {
       if (lt.status === "fulfilled") setLoginTrend(lt.value.data);
       if (ou.status === "fulfilled") setOUDist(ou.value.data);
       if (al.status === "fulfilled") setAlerts(al.value.data);
-      if (s.status === "rejected") setError("Failed to load dashboard data");
+      if (s.status === "rejected") setError(t("dashboard:error_load"));
       setLoading(false);
     });
-  }, []);
+  }, [t]);
 
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="text-secondary">Loading dashboard...</div>
+        <div className="text-secondary">{t("dashboard:loading")}</div>
       </div>
     );
   }
@@ -75,9 +77,9 @@ export function Dashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-primary">대시보드</h1>
+        <h1 className="text-xl font-bold text-primary">{t("dashboard:title")}</h1>
         <p className="mt-0.5 text-sm text-secondary">
-          Active Directory 도메인 개요
+          {t("dashboard:subtitle")}
         </p>
       </div>
 
@@ -85,38 +87,38 @@ export function Dashboard() {
       <div className="grid grid-cols-6 gap-4">
         <StatCard
           icon={Users}
-          label="총 사용자"
+          label={t("dashboard:stat_total_users")}
           value={stats?.total_users ?? 0}
-          subValue={`${stats?.active_users ?? 0} 활성`}
+          subValue={`${stats?.active_users ?? 0} ${t("dashboard:stat_active_suffix")}`}
           color="blue"
         />
         <StatCard
           icon={UsersRound}
-          label="그룹"
+          label={t("dashboard:stat_groups")}
           value={stats?.total_groups ?? 0}
           color="purple"
         />
         <StatCard
           icon={Monitor}
-          label="컴퓨터"
+          label={t("dashboard:stat_computers")}
           value={stats?.total_computers ?? 0}
           color="green"
         />
         <StatCard
           icon={FolderTree}
-          label="조직 단위"
+          label={t("dashboard:stat_ous")}
           value={stats?.total_ous ?? 0}
           color="yellow"
         />
         <StatCard
           icon={FileText}
-          label="GPO"
+          label={t("dashboard:stat_gpos")}
           value={stats?.total_gpos ?? 0}
           color="blue"
         />
         <StatCard
           icon={Server}
-          label="도메인 컨트롤러"
+          label={t("dashboard:stat_domain_controllers")}
           value={stats?.domain_controllers?.length ?? 0}
           color="red"
         />
@@ -129,7 +131,7 @@ export function Dashboard() {
           <div className="mb-4 flex items-center gap-2">
             <TrendingUp size={18} className="text-blue" />
             <h2 className="text-sm font-semibold text-primary">
-              최근 로그인 추이 (7일)
+              {t("dashboard:heading_login_trend")}
             </h2>
           </div>
           <LoginChart data={loginTrend} />
@@ -138,28 +140,28 @@ export function Dashboard() {
         {/* System health */}
         <div className="card p-5">
           <h2 className="mb-4 text-sm font-semibold text-primary">
-            시스템 리소스
+            {t("dashboard:heading_system_resources")}
           </h2>
           <div className="space-y-4">
             <ResourceBar
               icon={Cpu}
-              label="CPU"
+              label={t("dashboard:resource_cpu")}
               value={health?.cpu_percent ?? 0}
             />
             <ResourceBar
               icon={MemoryStick}
-              label="메모리"
+              label={t("dashboard:resource_memory")}
               value={health?.memory_percent ?? 0}
             />
             <ResourceBar
               icon={HardDrive}
-              label="디스크"
+              label={t("dashboard:resource_disk")}
               value={health?.disk_percent ?? 0}
             />
           </div>
           {health && (
             <div className="mt-4 border-t border-border pt-3 text-xs text-muted">
-              가동 시간: <span className="font-mono text-secondary">{health.uptime}</span>
+              {t("dashboard:uptime_label")} <span className="font-mono text-secondary">{health.uptime}</span>
             </div>
           )}
         </div>
@@ -170,11 +172,11 @@ export function Dashboard() {
         {/* Services */}
         <div className="card p-5">
           <h2 className="mb-4 text-sm font-semibold text-primary">
-            서비스 상태
+            {t("dashboard:heading_service_status")}
           </h2>
           <div className="space-y-2">
             {services.length === 0 && (
-              <p className="text-xs text-muted">데이터 없음</p>
+              <p className="text-xs text-muted">{t("dashboard:empty_data")}</p>
             )}
             {services.map((svc) => (
               <div
@@ -197,7 +199,13 @@ export function Dashboard() {
                   ) : (
                     <XCircle size={11} />
                   )}
-                  {svc.status}
+                  {svc.status === "healthy"
+                    ? t("common:status_healthy")
+                    : svc.status === "degraded"
+                      ? t("common:status_degraded")
+                      : svc.status === "down"
+                        ? t("common:status_down")
+                        : svc.status}
                 </span>
               </div>
             ))}
@@ -207,11 +215,11 @@ export function Dashboard() {
         {/* OU Distribution */}
         <div className="card p-5">
           <h2 className="mb-4 text-sm font-semibold text-primary">
-            OU별 사용자 분포
+            {t("dashboard:heading_ou_distribution")}
           </h2>
           <div className="space-y-2">
             {ouDist.length === 0 && (
-              <p className="text-xs text-muted">데이터 없음</p>
+              <p className="text-xs text-muted">{t("dashboard:empty_data")}</p>
             )}
             {ouDist.slice(0, 6).map((ou) => {
               const max = Math.max(...ouDist.map((o) => o.user_count), 1);
@@ -237,11 +245,11 @@ export function Dashboard() {
         <div className="card p-5">
           <div className="mb-4 flex items-center gap-2">
             <AlertTriangle size={16} className="text-yellow" />
-            <h2 className="text-sm font-semibold text-primary">최근 알림</h2>
+            <h2 className="text-sm font-semibold text-primary">{t("dashboard:heading_recent_alerts")}</h2>
           </div>
           <div className="space-y-2">
             {alerts.length === 0 && (
-              <p className="text-xs text-muted">알림 없음</p>
+              <p className="text-xs text-muted">{t("dashboard:empty_alerts")}</p>
             )}
             {alerts.slice(0, 6).map((alert) => (
               <div
@@ -271,12 +279,12 @@ export function Dashboard() {
       {/* Domain info footer */}
       {stats && (
         <div className="card p-5">
-          <h2 className="mb-3 text-sm font-semibold text-primary">도메인 정보</h2>
+          <h2 className="mb-3 text-sm font-semibold text-primary">{t("dashboard:heading_domain_info")}</h2>
           <div className="grid grid-cols-4 gap-4 text-xs">
-            <Info label="도메인 기능 수준" value={stats.domain_functional_level} />
-            <Info label="포리스트 기능 수준" value={stats.forest_functional_level} />
+            <Info label={t("dashboard:info_domain_functional_level")} value={stats.domain_functional_level} />
+            <Info label={t("dashboard:info_forest_functional_level")} value={stats.forest_functional_level} />
             <Info
-              label="도메인 컨트롤러"
+              label={t("dashboard:info_domain_controllers")}
               value={stats.domain_controllers?.join(", ") || "—"}
             />
           </div>
@@ -353,10 +361,11 @@ function ResourceBar({
 }
 
 function LoginChart({ data }: { data: LoginTrendPoint[] }) {
+  const { t } = useTranslation();
   if (!data.length)
     return (
       <div className="flex h-40 items-center justify-center text-xs text-muted">
-        데이터 없음
+        {t("dashboard:empty_data")}
       </div>
     );
 

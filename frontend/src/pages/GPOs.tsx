@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Search,
   FilePlus2,
@@ -55,22 +56,10 @@ function formatDate(iso: string | null | undefined): string {
   });
 }
 
-function gpoStatus(s: GPO["status"]): {
-  status: "enabled" | "disabled";
-  label: string;
-} {
-  switch (s) {
-    case "enabled":
-      return { status: "enabled", label: "활성" };
-    case "all_settings_disabled":
-      return { status: "disabled", label: "전체 비활성" };
-    default:
-      return { status: "disabled", label: "비활성" };
-  }
-}
-
 // ── Page ───────────────────────────────────────────
 export function GPOs() {
+  const { t } = useTranslation();
+
   // List state
   const [gpos, setGPOs] = useState<GPO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,13 +89,28 @@ export function GPOs() {
   // Toast
   const [toast, setToast] = useState<Toast>(null);
 
+  // ── GPO status (i18n) ────────────────────────────
+  function gpoStatus(s: GPO["status"]): {
+    status: "enabled" | "disabled";
+    label: string;
+  } {
+    switch (s) {
+      case "enabled":
+        return { status: "enabled", label: t("gpos:status_enabled") };
+      case "all_settings_disabled":
+        return { status: "disabled", label: t("gpos:status_all_disabled") };
+      default:
+        return { status: "disabled", label: t("gpos:status_disabled") };
+    }
+  }
+
   // ── Debounced search ─────────────────────────────
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setDebouncedSearch(search.trim());
       setPage(1);
     }, 350);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [search]);
 
   // ── Fetch list ───────────────────────────────────
@@ -128,12 +132,12 @@ export function GPOs() {
     } catch (err) {
       setError(
         (err as { message?: string })?.message ??
-          "GPO 목록을 불러오지 못했습니다",
+          t("gpos:error_load_list"),
       );
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch]);
+  }, [page, debouncedSearch, t]);
 
   useEffect(() => {
     fetchGPOs();
@@ -142,8 +146,8 @@ export function GPOs() {
   // ── Auto-dismiss toast ───────────────────────────
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timer);
   }, [toast]);
 
   // ── Detail ───────────────────────────────────────
@@ -165,13 +169,13 @@ export function GPOs() {
     setActionLoading("delete");
     try {
       await api.delete(`${API_BASE}/gpo/${selectedGPO.id}`);
-      setToast({ type: "success", message: "GPO가 삭제되었습니다" });
+      setToast({ type: "success", message: t("gpos:toast_gpo_deleted") });
       closeDetail();
       fetchGPOs();
     } catch (err) {
       setToast({
         type: "error",
-        message: (err as { message?: string })?.message ?? "삭제에 실패했습니다",
+        message: (err as { message?: string })?.message ?? t("gpos:toast_delete_failed"),
       });
     } finally {
       setActionLoading(null);
@@ -192,7 +196,7 @@ export function GPOs() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!form.name.trim()) errs.name = "GPO 이름을 입력하세요";
+    if (!form.name.trim()) errs.name = t("gpos:validation_name_required");
     setFormErrors(errs);
     if (Object.keys(errs).length) return;
 
@@ -203,7 +207,7 @@ export function GPOs() {
         description: form.description.trim() || undefined,
       };
       await api.post<GPO>(`${API_BASE}/gpo`, body);
-      setToast({ type: "success", message: "GPO가 생성되었습니다" });
+      setToast({ type: "success", message: t("gpos:toast_gpo_created") });
       setCreateOpen(false);
       setForm(EMPTY_FORM);
       setFormErrors({});
@@ -211,7 +215,7 @@ export function GPOs() {
     } catch (err) {
       setToast({
         type: "error",
-        message: (err as { message?: string })?.message ?? "GPO 생성에 실패했습니다",
+        message: (err as { message?: string })?.message ?? t("gpos:toast_gpo_create_failed"),
       });
     } finally {
       setSubmitting(false);
@@ -224,7 +228,7 @@ export function GPOs() {
   const columns = [
     {
       key: "name",
-      header: "이름",
+      header: t("gpos:th_name"),
       render: (g: GPO) => (
         <div className="flex items-center gap-2.5">
           <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-blue/15 text-blue">
@@ -236,7 +240,7 @@ export function GPOs() {
     },
     {
       key: "description",
-      header: "설명",
+      header: t("gpos:th_description"),
       render: (g: GPO) => (
         <span
           className="block max-w-[280px] truncate text-secondary"
@@ -248,7 +252,7 @@ export function GPOs() {
     },
     {
       key: "status",
-      header: "상태",
+      header: t("gpos:th_status"),
       render: (g: GPO) => {
         const s = gpoStatus(g.status);
         return <StatusBadge status={s.status} label={s.label} />;
@@ -256,7 +260,7 @@ export function GPOs() {
     },
     {
       key: "links",
-      header: "링크 수",
+      header: t("gpos:th_links"),
       render: (g: GPO) => (
         <span className="font-mono text-primary">
           {g.links?.length ?? 0}
@@ -265,7 +269,7 @@ export function GPOs() {
     },
     {
       key: "modified",
-      header: "수정일",
+      header: t("gpos:th_modified"),
       render: (g: GPO) => (
         <span className="text-muted">{formatDate(g.modified)}</span>
       ),
@@ -278,9 +282,9 @@ export function GPOs() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-primary">그룹 정책 관리</h1>
+          <h1 className="text-xl font-bold text-primary">{t("gpos:title")}</h1>
           <p className="mt-0.5 text-sm text-secondary">
-            총 {total.toLocaleString()}개의 그룹 정책 개체
+            {t("gpos:subtitle_count", { count: total.toLocaleString() })}
           </p>
         </div>
       </div>
@@ -294,14 +298,14 @@ export function GPOs() {
           />
           <input
             className="input pl-9"
-            placeholder="GPO 이름 검색"
+            placeholder={t("gpos:ph_search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
         <button className="btn-primary" onClick={openCreate}>
-          <FilePlus2 size={16} /> GPO 추가
+          <FilePlus2 size={16} /> {t("gpos:btn_add_gpo")}
         </button>
       </div>
 
@@ -314,7 +318,7 @@ export function GPOs() {
             onClick={fetchGPOs}
             className="ml-auto rounded px-2 py-1 text-xs hover:bg-red/10"
           >
-            재시도
+            {t("gpos:btn_retry")}
           </button>
         </div>
       )}
@@ -324,11 +328,11 @@ export function GPOs() {
         {!loading && !visibleGPOs.length ? (
           <EmptyState
             icon={ShieldAlert}
-            title="GPO가 없습니다"
+            title={t("gpos:empty_no_gpos_title")}
             description={
               debouncedSearch
-                ? "검색 조건에 일치하는 그룹 정책 개체가 없습니다."
-                : "등록된 그룹 정책 개체가 없습니다."
+                ? t("gpos:empty_no_gpos_filtered")
+                : t("gpos:empty_no_gpos_registered")
             }
           />
         ) : (
@@ -336,7 +340,7 @@ export function GPOs() {
             columns={columns}
             data={visibleGPOs}
             loading={loading}
-            emptyMessage="GPO가 없습니다"
+            emptyMessage={t("gpos:empty_no_gpos")}
             onRowClick={openDetail}
           />
         )}
@@ -353,7 +357,7 @@ export function GPOs() {
       <Drawer
         open={detailOpen}
         onClose={closeDetail}
-        title="그룹 정책 상세"
+        title={t("gpos:drawer_title_detail")}
         width="lg"
       >
         {selectedGPO && (
@@ -379,50 +383,50 @@ export function GPOs() {
                     return <StatusBadge status={s.status} label={s.label} />;
                   })()}
                   <span className="badge bg-blue/10 text-blue">
-                    링크 {selectedGPO.links?.length ?? 0}개
+                    {t("gpos:badge_links_count", { count: selectedGPO.links?.length ?? 0 })}
                   </span>
                 </div>
               </div>
             </div>
 
             {/* Basic info */}
-            <DetailSection title="기본 정보">
+            <DetailSection title={t("gpos:section_basic_info")}>
               <InfoRow
                 icon={ShieldAlert}
-                label="정책 이름"
+                label={t("gpos:label_policy_name")}
                 value={selectedGPO.name}
               />
               <InfoRow
                 icon={Info}
-                label="설명"
+                label={t("gpos:label_description")}
                 value={selectedGPO.description}
               />
               <InfoRow
                 icon={Network}
-                label="고유 이름 (DN)"
+                label={t("gpos:label_dn")}
                 value={selectedGPO.dn}
                 mono
               />
               <InfoRow
                 icon={RefreshCw}
-                label="생성일"
+                label={t("gpos:label_created")}
                 value={formatDate(selectedGPO.created)}
               />
               <InfoRow
                 icon={RefreshCw}
-                label="수정일"
+                label={t("gpos:label_modified")}
                 value={formatDate(selectedGPO.modified)}
               />
             </DetailSection>
 
             {/* Version info */}
-            <DetailSection title="버전 정보">
+            <DetailSection title={t("gpos:section_version_info")}>
               <div className="grid grid-cols-2 divide-x divide-border-subtle">
                 <div className="flex flex-col items-center gap-1 px-4 py-4">
                   <span className="flex h-8 w-8 items-center justify-center rounded-md bg-blue/15 text-blue">
                     <Monitor size={16} />
                   </span>
-                  <span className="text-xs text-secondary">컴퓨터 구성</span>
+                  <span className="text-xs text-secondary">{t("gpos:label_computer_config")}</span>
                   <span className="font-mono text-lg font-semibold text-primary">
                     {selectedGPO.computer_version ?? 0}
                   </span>
@@ -431,7 +435,7 @@ export function GPOs() {
                   <span className="flex h-8 w-8 items-center justify-center rounded-md bg-purple/15 text-purple">
                     <User size={16} />
                   </span>
-                  <span className="text-xs text-secondary">사용자 구성</span>
+                  <span className="text-xs text-secondary">{t("gpos:label_user_config")}</span>
                   <span className="font-mono text-lg font-semibold text-primary">
                     {selectedGPO.user_version ?? 0}
                   </span>
@@ -441,7 +445,7 @@ export function GPOs() {
 
             {/* Linked OUs */}
             <DetailSection
-              title={`연결된 OU (${selectedGPO.links?.length ?? 0})`}
+              title={t("gpos:section_linked_ous", { count: selectedGPO.links?.length ?? 0 })}
             >
               {selectedGPO.links?.length ? (
                 <div className="max-h-64 overflow-y-auto">
@@ -466,21 +470,21 @@ export function GPOs() {
                 <div className="p-2">
                   <EmptyState
                     icon={Link2}
-                    title="연결된 OU가 없습니다"
-                    description="이 그룹 정책이 연결된 조직 단위가 없습니다."
+                    title={t("gpos:empty_no_linked_ous_title")}
+                    description={t("gpos:empty_no_linked_ous_desc")}
                   />
                 </div>
               )}
             </DetailSection>
 
             {/* Danger zone */}
-            <DetailSection title="정책 관리">
+            <DetailSection title={t("gpos:section_policy_management")}>
               <div className="space-y-2 p-4">
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
                   className="btn-danger w-full justify-center"
                 >
-                  <Trash2 size={16} /> GPO 삭제
+                  <Trash2 size={16} /> {t("gpos:btn_delete_gpo")}
                 </button>
 
                 {showDeleteConfirm && (
@@ -491,8 +495,7 @@ export function GPOs() {
                         className="mt-0.5 flex-shrink-0"
                       />
                       <p>
-                        정말 <strong>{selectedGPO.name}</strong> 그룹 정책
-                        개체를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+                        {t("gpos:confirm_delete_gpo", { name: selectedGPO.name })}
                       </p>
                     </div>
                     <div className="mt-2 flex gap-2">
@@ -500,7 +503,7 @@ export function GPOs() {
                         onClick={() => setShowDeleteConfirm(false)}
                         className="btn-outline flex-1 justify-center"
                       >
-                        취소
+                        {t("gpos:btn_cancel")}
                       </button>
                       <button
                         onClick={handleDelete}
@@ -512,7 +515,7 @@ export function GPOs() {
                         ) : (
                           <Trash2 size={16} />
                         )}
-                        삭제 확인
+                        {t("gpos:btn_delete_confirm")}
                       </button>
                     </div>
                   </div>
@@ -527,26 +530,26 @@ export function GPOs() {
       <Drawer
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        title="그룹 정책 추가"
+        title={t("gpos:drawer_title_create")}
         width="lg"
       >
         <form onSubmit={handleCreate} className="space-y-5">
-          <Field label="GPO 이름 *" error={formErrors.name}>
+          <Field label={t("gpos:label_name_required")} error={formErrors.name}>
             <input
               className="input font-mono"
               value={form.name}
               onChange={(e) => setField("name", e.target.value)}
-              placeholder="Default Domain Policy"
+              placeholder={t("gpos:ph_name")}
               autoComplete="off"
             />
           </Field>
 
-          <Field label="설명">
+          <Field label={t("gpos:label_description_form")}>
             <input
               className="input"
               value={form.description}
               onChange={(e) => setField("description", e.target.value)}
-              placeholder="도메인 기본 정책"
+              placeholder={t("gpos:ph_description")}
               autoComplete="off"
             />
           </Field>
@@ -557,7 +560,7 @@ export function GPOs() {
               className="btn-outline"
               onClick={() => setCreateOpen(false)}
             >
-              취소
+              {t("gpos:btn_cancel")}
             </button>
             <button
               type="submit"
@@ -566,11 +569,11 @@ export function GPOs() {
             >
               {submitting ? (
                 <>
-                  <Loader2 size={16} className="animate-spin" /> 생성 중...
+                  <Loader2 size={16} className="animate-spin" /> {t("gpos:btn_creating")}
                 </>
               ) : (
                 <>
-                  <FilePlus2 size={16} /> 생성
+                  <FilePlus2 size={16} /> {t("gpos:btn_create")}
                 </>
               )}
             </button>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Users,
   UserPlus,
@@ -51,6 +52,8 @@ const EMPTY_FORM: CreateForm = {
 
 type Toast = { type: "success" | "error"; message: string } | null;
 
+type TFunc = (key: string, opts?: Record<string, unknown>) => string;
+
 // ── Helpers ────────────────────────────────────────
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -69,23 +72,25 @@ function normalize(v: string): string {
   return (v ?? "").toLowerCase().replace(/[\s_]+/g, "");
 }
 
-function groupTypeLabel(t: string): string {
-  const k = normalize(t);
-  if (k.includes("secur")) return "보안";
-  if (k.includes("distrib")) return "배포";
-  return t || "—";
+function groupTypeLabel(type: string, t: TFunc): string {
+  const k = normalize(type);
+  if (k.includes("secur")) return t("groups:group_type_security");
+  if (k.includes("distrib")) return t("groups:group_type_distribution");
+  return type || "—";
 }
 
-function scopeLabel(s: string): string {
-  const k = normalize(s);
-  if (k.includes("domainlocal")) return "도메인 로컬";
-  if (k.includes("global")) return "글로벌";
-  if (k.includes("universal")) return "유니버설";
-  return s || "—";
+function scopeLabel(scope: string, t: TFunc): string {
+  const k = normalize(scope);
+  if (k.includes("domainlocal")) return t("groups:scope_domain_local");
+  if (k.includes("global")) return t("groups:scope_global");
+  if (k.includes("universal")) return t("groups:scope_universal");
+  return scope || "—";
 }
 
 // ── Page ───────────────────────────────────────────
 export function Groups() {
+  const { t } = useTranslation();
+
   // List state
   const [groups, setGroups] = useState<ADGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -119,11 +124,11 @@ export function Groups() {
 
   // ── Debounced search ─────────────────────────────
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setDebouncedSearch(search.trim());
       setPage(1);
     }, 350);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [search]);
 
   // ── Fetch list ───────────────────────────────────
@@ -145,12 +150,12 @@ export function Groups() {
     } catch (err) {
       setError(
         (err as { message?: string })?.message ??
-          "그룹 목록을 불러오지 못했습니다",
+          t("groups:error_load_list"),
       );
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch]);
+  }, [page, debouncedSearch, t]);
 
   useEffect(() => {
     fetchGroups();
@@ -159,8 +164,8 @@ export function Groups() {
   // ── Auto-dismiss toast ───────────────────────────
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timer);
   }, [toast]);
 
   // ── Detail ───────────────────────────────────────
@@ -178,7 +183,7 @@ export function Groups() {
     } catch (err) {
       setDetailError(
         (err as { message?: string })?.message ??
-          "그룹 정보를 불러오지 못했습니다",
+          t("groups:error_load_detail"),
       );
     } finally {
       setDetailLoading(false);
@@ -198,13 +203,13 @@ export function Groups() {
     setActionLoading("delete");
     try {
       await api.delete(`${API_BASE}/groups/${selectedGroup.id}`);
-      setToast({ type: "success", message: "그룹이 삭제되었습니다" });
+      setToast({ type: "success", message: t("groups:toast_group_deleted") });
       closeDetail();
       fetchGroups();
     } catch (err) {
       setToast({
         type: "error",
-        message: (err as { message?: string })?.message ?? "삭제에 실패했습니다",
+        message: (err as { message?: string })?.message ?? t("groups:toast_delete_failed"),
       });
     } finally {
       setActionLoading(null);
@@ -225,7 +230,7 @@ export function Groups() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!form.name.trim()) errs.name = "그룹 이름을 입력하세요";
+    if (!form.name.trim()) errs.name = t("groups:validation_name_required");
     setFormErrors(errs);
     if (Object.keys(errs).length) return;
 
@@ -239,7 +244,7 @@ export function Groups() {
         ou: form.ou.trim() || undefined,
       };
       await api.post<ADGroup>(`${API_BASE}/groups`, body);
-      setToast({ type: "success", message: "그룹이 생성되었습니다" });
+      setToast({ type: "success", message: t("groups:toast_group_created") });
       setCreateOpen(false);
       setForm(EMPTY_FORM);
       setFormErrors({});
@@ -248,7 +253,7 @@ export function Groups() {
       setToast({
         type: "error",
         message:
-          (err as { message?: string })?.message ?? "그룹 생성에 실패했습니다",
+          (err as { message?: string })?.message ?? t("groups:toast_group_create_failed"),
       });
     } finally {
       setSubmitting(false);
@@ -261,7 +266,7 @@ export function Groups() {
   const columns = [
     {
       key: "name",
-      header: "그룹명",
+      header: t("groups:th_group_name"),
       render: (g: ADGroup) => (
         <div className="flex items-center gap-2.5">
           <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-blue/15 text-blue">
@@ -273,7 +278,7 @@ export function Groups() {
     },
     {
       key: "description",
-      header: "설명",
+      header: t("groups:th_description"),
       render: (g: ADGroup) => (
         <span
           className="block max-w-[260px] truncate text-secondary"
@@ -285,7 +290,7 @@ export function Groups() {
     },
     {
       key: "group_type",
-      header: "유형",
+      header: t("groups:th_type"),
       render: (g: ADGroup) => (
         <span
           className={clsx(
@@ -295,22 +300,22 @@ export function Groups() {
               : "bg-purple/10 text-purple",
           )}
         >
-          {groupTypeLabel(g.group_type)}
+          {groupTypeLabel(g.group_type, t)}
         </span>
       ),
     },
     {
       key: "scope",
-      header: "범위",
+      header: t("groups:th_scope"),
       render: (g: ADGroup) => (
         <span className="badge bg-muted/15 text-secondary">
-          {scopeLabel(g.scope)}
+          {scopeLabel(g.scope, t)}
         </span>
       ),
     },
     {
       key: "member_count",
-      header: "구성원 수",
+      header: t("groups:th_member_count"),
       render: (g: ADGroup) => (
         <span className="font-mono text-primary">
           {g.member_count?.toLocaleString() ?? 0}
@@ -319,7 +324,7 @@ export function Groups() {
     },
     {
       key: "ou",
-      header: "OU",
+      header: t("groups:th_ou"),
       render: (g: ADGroup) => (
         <span className="font-mono text-xs text-muted">{g.ou || "—"}</span>
       ),
@@ -332,9 +337,9 @@ export function Groups() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-primary">그룹 관리</h1>
+          <h1 className="text-xl font-bold text-primary">{t("groups:title")}</h1>
           <p className="mt-0.5 text-sm text-secondary">
-            총 {total.toLocaleString()}개의 그룹
+            {t("groups:subtitle_count", { count: total.toLocaleString() })}
           </p>
         </div>
       </div>
@@ -348,14 +353,14 @@ export function Groups() {
           />
           <input
             className="input pl-9"
-            placeholder="그룹 이름 검색"
+            placeholder={t("groups:ph_search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
         <button className="btn-primary" onClick={openCreate}>
-          <UserPlus size={16} /> 그룹 추가
+          <UserPlus size={16} /> {t("groups:btn_add_group")}
         </button>
       </div>
 
@@ -368,7 +373,7 @@ export function Groups() {
             onClick={fetchGroups}
             className="ml-auto rounded px-2 py-1 text-xs hover:bg-red/10"
           >
-            재시도
+            {t("groups:btn_retry")}
           </button>
         </div>
       )}
@@ -379,7 +384,7 @@ export function Groups() {
           columns={columns}
           data={visibleGroups}
           loading={loading}
-          emptyMessage="그룹이 없습니다"
+          emptyMessage={t("groups:empty_no_groups")}
           onRowClick={openDetail}
         />
         <div className="border-t border-border-subtle px-4 py-3">
@@ -395,7 +400,7 @@ export function Groups() {
       <Drawer
         open={detailOpen}
         onClose={closeDetail}
-        title="그룹 상세"
+        title={t("groups:drawer_title_detail")}
         width="lg"
       >
         {detailLoading && !selectedGroup && (
@@ -430,59 +435,64 @@ export function Groups() {
                         : "bg-purple/10 text-purple",
                     )}
                   >
-                    {groupTypeLabel(selectedGroup.group_type)}
+                    {groupTypeLabel(selectedGroup.group_type, t)}
                   </span>
                   <span className="badge bg-muted/15 text-secondary">
-                    {scopeLabel(selectedGroup.scope)}
+                    {scopeLabel(selectedGroup.scope, t)}
                   </span>
                   <span className="badge bg-green/10 text-green">
-                    구성원 {selectedGroup.member_count?.toLocaleString() ?? 0}명
+                    {t("groups:badge_members_count", {
+                      count: selectedGroup.member_count?.toLocaleString() ?? 0,
+                    })}
                   </span>
                 </div>
               </div>
             </div>
 
             {/* Basic info */}
-            <DetailSection title="기본 정보">
+            <DetailSection title={t("groups:section_basic_info")}>
               <InfoRow
                 icon={Layers}
-                label="그룹 이름"
+                label={t("groups:label_group_name")}
                 value={selectedGroup.name}
                 mono
               />
               <InfoRow
                 icon={Info}
-                label="설명"
+                label={t("groups:label_description")}
                 value={selectedGroup.description}
               />
               <InfoRow
                 icon={ShieldAlert}
-                label="유형"
-                value={groupTypeLabel(selectedGroup.group_type)}
+                label={t("groups:label_type")}
+                value={groupTypeLabel(selectedGroup.group_type, t)}
               />
               <InfoRow
                 icon={Layers}
-                label="범위"
-                value={scopeLabel(selectedGroup.scope)}
+                label={t("groups:label_scope")}
+                value={scopeLabel(selectedGroup.scope, t)}
               />
               <InfoRow
                 icon={FolderTree}
-                label="조직 단위"
+                label={t("groups:label_ou")}
                 value={selectedGroup.ou}
                 mono
               />
               <InfoRow
                 icon={Clock}
-                label="생성일"
+                label={t("groups:label_created")}
                 value={formatDate(selectedGroup.created_at)}
               />
             </DetailSection>
 
             {/* Members */}
             <DetailSection
-              title={`구성원 (${
-                selectedGroup.members?.length ?? selectedGroup.member_count ?? 0
-              })`}
+              title={t("groups:section_members", {
+                count:
+                  selectedGroup.members?.length ??
+                  selectedGroup.member_count ??
+                  0,
+              })}
             >
               {selectedGroup.members?.length ? (
                 <div className="max-h-64 overflow-y-auto">
@@ -507,21 +517,21 @@ export function Groups() {
                 <div className="p-2">
                   <EmptyState
                     icon={Users}
-                    title="구성원이 없습니다"
-                    description="이 그룹에 속한 계정이 없습니다."
+                    title={t("groups:empty_no_members_title")}
+                    description={t("groups:empty_no_members_desc")}
                   />
                 </div>
               )}
             </DetailSection>
 
             {/* Danger zone */}
-            <DetailSection title="그룹 관리">
+            <DetailSection title={t("groups:section_group_management")}>
               <div className="space-y-2 p-4">
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
                   className="btn-danger w-full justify-center"
                 >
-                  <Trash2 size={16} /> 그룹 삭제
+                  <Trash2 size={16} /> {t("groups:btn_delete_group")}
                 </button>
 
                 {showDeleteConfirm && (
@@ -532,8 +542,9 @@ export function Groups() {
                         className="mt-0.5 flex-shrink-0"
                       />
                       <p>
-                        정말 <strong>{selectedGroup.name}</strong>{" "}
-                        그룹을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+                        {t("groups:confirm_delete_group", {
+                          name: selectedGroup.name,
+                        })}
                       </p>
                     </div>
                     <div className="mt-2 flex gap-2">
@@ -541,7 +552,7 @@ export function Groups() {
                         onClick={() => setShowDeleteConfirm(false)}
                         className="btn-outline flex-1 justify-center"
                       >
-                        취소
+                        {t("groups:btn_cancel")}
                       </button>
                       <button
                         onClick={handleDelete}
@@ -553,7 +564,7 @@ export function Groups() {
                         ) : (
                           <Trash2 size={16} />
                         )}
-                        삭제 확인
+                        {t("groups:btn_delete_confirm")}
                       </button>
                     </div>
                   </div>
@@ -568,52 +579,52 @@ export function Groups() {
       <Drawer
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        title="그룹 추가"
+        title={t("groups:drawer_title_create")}
         width="lg"
       >
         <form onSubmit={handleCreate} className="space-y-5">
-          <Field label="그룹 이름 *" error={formErrors.name}>
+          <Field label={t("groups:label_group_name_required")} error={formErrors.name}>
             <input
               className="input font-mono"
               value={form.name}
               onChange={(e) => setField("name", e.target.value)}
-              placeholder="Domain Admins"
+              placeholder={t("groups:ph_group_name")}
               autoComplete="off"
             />
           </Field>
 
-          <Field label="설명">
+          <Field label={t("groups:label_description_form")}>
             <input
               className="input"
               value={form.description}
               onChange={(e) => setField("description", e.target.value)}
-              placeholder="도메인 관리자 그룹"
+              placeholder={t("groups:ph_description")}
               autoComplete="off"
             />
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label="유형">
+            <Field label={t("groups:label_type_form")}>
               <SelectInput
                 value={form.group_type}
                 onChange={(v) => setField("group_type", v)}
               >
-                {GROUP_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {groupTypeLabel(t)} ({t})
+                {GROUP_TYPES.map((gt) => (
+                  <option key={gt} value={gt}>
+                    {groupTypeLabel(gt, t)} ({gt})
                   </option>
                 ))}
               </SelectInput>
             </Field>
 
-            <Field label="범위">
+            <Field label={t("groups:label_scope_form")}>
               <SelectInput
                 value={form.scope}
                 onChange={(v) => setField("scope", v)}
               >
                 {SCOPES.map((s) => (
                   <option key={s} value={s}>
-                    {scopeLabel(s)} ({s})
+                    {scopeLabel(s, t)} ({s})
                   </option>
                 ))}
               </SelectInput>
@@ -621,14 +632,14 @@ export function Groups() {
           </div>
 
           <Field
-            label="조직 단위 (OU)"
-            hint="예: OU=Groups,DC=corp,DC=example,DC=com"
+            label={t("groups:label_ou_form")}
+            hint={t("groups:hint_ou_example")}
           >
             <input
               className="input font-mono"
               value={form.ou}
               onChange={(e) => setField("ou", e.target.value)}
-              placeholder="OU=Groups,DC=corp,DC=example,DC=com"
+              placeholder={t("groups:ph_ou")}
               autoComplete="off"
             />
           </Field>
@@ -639,7 +650,7 @@ export function Groups() {
               className="btn-outline"
               onClick={() => setCreateOpen(false)}
             >
-              취소
+              {t("groups:btn_cancel")}
             </button>
             <button
               type="submit"
@@ -648,11 +659,11 @@ export function Groups() {
             >
               {submitting ? (
                 <>
-                  <Loader2 size={16} className="animate-spin" /> 생성 중...
+                  <Loader2 size={16} className="animate-spin" /> {t("groups:btn_creating")}
                 </>
               ) : (
                 <>
-                  <UserPlus size={16} /> 생성
+                  <UserPlus size={16} /> {t("groups:btn_create")}
                 </>
               )}
             </button>

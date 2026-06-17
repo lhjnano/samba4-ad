@@ -6,37 +6,83 @@ Group Policy Object routes — ``/api/v1/gpo``.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 
 from src.api._errors import to_http_error
 from src.core.deps import get_directory
-from src.models.common import Page
 from src.models.domain import GpoStatus
 from src.models.gpo import (
     GpoCreate,
     GpoDetail,
     GpoLinkTargetRequest,
     GpoStats,
-    GpoSummary,
 )
 from src.services.directory import DirectoryBackend, DirectoryError
 
 router = APIRouter(prefix="/gpo", tags=["gpo"])
 
 
-@router.get("", response_model=Page[GpoSummary])
+# ── List item matching frontend GPO type ──────────────────────────────
+
+
+class GpoListItem(BaseModel):
+    """Flat GPO row for the management table (matches frontend GPO type)."""
+
+    id: str
+    name: str
+    dn: str = ""
+    description: str = ""
+    status: str = "enabled"
+    links: list[str] = Field(default_factory=list)
+    created: str = ""
+    modified: str = ""
+    computer_version: int = 0
+    user_version: int = 0
+
+
+class PaginatedGPOs(BaseModel):
+    items: list[GpoListItem]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+@router.get("", response_model=PaginatedGPOs)
 def list_gpos(
     q: str | None = Query(None, description="Search by GPO display name"),
     status_filter: str | None = Query(
         None, alias="status", description="enabled|disabled"
     ),
+    search: str | None = Query(None, description="Search (alias for q)"),
     page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=500),
+    page_size: int = Query(20, ge=1, le=500),
     directory: DirectoryBackend = Depends(get_directory),
-) -> Page[GpoSummary]:
+) -> PaginatedGPOs:
+    """Paginated GPO list matching frontend GPO type."""
+    query = q or search
+    limit = page_size  # backend directory uses 'limit' internally
     items, total = directory.list_gpos(
-        q=q, status=status_filter, page=page, limit=limit
+        q=query, status=status_filter, page=page, limit=limit
     )
-    return Page.of(items, total, page, limit)
+    pages = (total + limit - 1) // limit if total else 1
+    mapped = [
+        GpoListItem(
+            id=g.id,
+            name=g.display_name,
+            description=g.description or "",
+            status=g.status.value if hasattr(g.status, "value") else str(g.status),
+            links=[],  # link target names would require extra lookups
+        )
+        for g in items
+    ]
+    return PaginatedGPOs(
+        items=mapped,
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=pages,
+    )
 
 
 @router.get("/stats", response_model=GpoStats)

@@ -186,9 +186,13 @@ All **API-facing text** MUST be in **English**. This includes:
 - Health status values (e.g. `"healthy"` / `"unhealthy"`, not `"정상"` / `"장애"`)
 
 **Exceptions** (Korean is allowed):
-- Mock seed data representing realistic Korean AD domain entries (user names, OU names, group names)
+- Mock seed data limited to **default Windows AD built-in objects** (Administrator, Domain Admins, Default Domain Policy, etc.) — see DESIGN-INTEGRATION.md §9
 - Log messages (internal, not API-facing)
 - Code comments and internal documentation
+
+> **Important:** Mock mode must NOT generate fake users, groups, or inflated
+> statistics. It represents a freshly provisioned domain — empty except for
+> built-in AD defaults.
 
 **Rationale:** The API is a machine contract. Internationalization (i18n) is a
 frontend concern — the React SPA will map English API values to localized
@@ -196,6 +200,43 @@ display strings.
 
 ---
 
-## 8. Policy Updates
+## 8. Frontend i18n Policy
+
+### 8.1 Supported Languages
+
+| Code | Language | Status |
+|------|----------|--------|
+| `en` | English  | **Default** (fallback) |
+| `ko` | 한국어    | Supported |
+
+### 8.2 Requirements
+
+1. **No hardcoded UI strings** — All user-visible text in `.tsx` files MUST use
+   `t("namespace:key")` from `react-i18next`. Hardcoded Korean or English string
+   literals in JSX are forbidden.
+
+2. **Translation file is the single source** — All UI strings live in
+   `frontend/src/i18n/locales/{en,ko}.json`. No inline string literals.
+
+3. **localStorage persistence** — Language preference is stored under
+   `localStorage["lang"]` via `i18next-browser-languagedetector`. On first visit,
+   defaults to `en` (or navigator language if supported).
+
+4. **Namespace convention** — Each page/section has its own namespace:
+   `common`, `setup`, `dashboard`, `users`, `groups`, `computers`, `ous`,
+   `gpos`, `dns`, `policies`, `logs`, `settings`, `api`.
+
+5. **Language switcher** — The Settings page provides a `<select>` to change
+   language. Changing language does NOT require a page reload (react-i18next
+   re-renders automatically).
+
+6. **Locale-aware formatting** — Date/time formatting must respect the current
+   language (`en-US` vs `ko-KR`). Use `i18n.language` to select locale.
+
+> See DESIGN-INTEGRATION.md §10 for the full i18n implementation guide.
+
+---
+
+## 9. Policy Updates
 
 Changes to this document require Tech Lead approval or above and will be announced to all contributors.

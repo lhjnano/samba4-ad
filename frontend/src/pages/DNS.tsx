@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import {
   Globe,
   Plus,
@@ -53,25 +55,30 @@ const EMPTY_FORM: CreateForm = {
 type Toast = { type: "success" | "error"; message: string } | null;
 
 // ── Helpers ────────────────────────────────────────
-function zoneTypeBadge(t: string): string {
-  const k = (t ?? "").toLowerCase();
-  if (k.includes("primary") || k.includes("master")) return "주 영역";
-  if (k.includes("secondary") || k.includes("slave")) return "보조 영역";
-  if (k.includes("stub")) return "스텁 영역";
-  if (k.includes("forward")) return "전달 영역";
-  return t || "영역";
+function zoneTypeBadge(zoneType: string, t: TFunction): string {
+  const k = (zoneType ?? "").toLowerCase();
+  if (k.includes("primary") || k.includes("master"))
+    return t("dns:zone_type_primary");
+  if (k.includes("secondary") || k.includes("slave"))
+    return t("dns:zone_type_secondary");
+  if (k.includes("stub")) return t("dns:zone_type_stub");
+  if (k.includes("forward")) return t("dns:zone_type_forward");
+  return zoneType || t("dns:zone_type_default");
 }
 
-function formatTtl(ttl: number): string {
+function formatTtl(ttl: number, t: TFunction): string {
   if (!ttl && ttl !== 0) return "—";
-  if (ttl < 60) return `${ttl}초`;
-  if (ttl < 3600) return `${Math.round(ttl / 60)}분`;
-  if (ttl < 86400) return `${Math.round(ttl / 3600)}시간`;
-  return `${Math.round(ttl / 86400)}일`;
+  if (ttl < 60) return t("dns:ttl_seconds", { count: ttl });
+  if (ttl < 3600) return t("dns:ttl_minutes", { count: Math.round(ttl / 60) });
+  if (ttl < 86400)
+    return t("dns:ttl_hours", { count: Math.round(ttl / 3600) });
+  return t("dns:ttl_days", { count: Math.round(ttl / 86400) });
 }
 
 // ── Page ───────────────────────────────────────────
 export function DNS() {
+  const { t } = useTranslation();
+
   // Zones
   const [zones, setZones] = useState<DNSZone[]>([]);
   const [zonesLoading, setZonesLoading] = useState(true);
@@ -111,8 +118,7 @@ export function DNS() {
       }
     } catch (err) {
       setZonesError(
-        (err as { message?: string })?.message ??
-          "DNS 영역 목록을 불러오지 못했습니다",
+        (err as { message?: string })?.message ?? t("dns:error_load_zones"),
       );
     } finally {
       setZonesLoading(false);
@@ -139,14 +145,13 @@ export function DNS() {
       setRecords(Array.isArray(data) ? data : []);
     } catch (err) {
       setRecordsError(
-        (err as { message?: string })?.message ??
-          "레코드 목록을 불러오지 못했습니다",
+        (err as { message?: string })?.message ?? t("dns:error_load_records"),
       );
       setRecords([]);
     } finally {
       setRecordsLoading(false);
     }
-  }, [selectedZone]);
+  }, [selectedZone, t]);
 
   useEffect(() => {
     fetchRecords();
@@ -155,8 +160,8 @@ export function DNS() {
   // ── Auto-dismiss toast ───────────────────────────
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(t);
+    const id = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(id);
   }, [toast]);
 
   // ── Create ───────────────────────────────────────
@@ -174,9 +179,9 @@ export function DNS() {
     e.preventDefault();
     if (!selectedZone) return;
     const errs: Record<string, string> = {};
-    if (!form.name.trim()) errs.name = "레코드 이름을 입력하세요";
-    if (!form.value.trim()) errs.value = "값을 입력하세요";
-    if (form.ttl < 0) errs.ttl = "TTL은 0 이상이어야 합니다";
+    if (!form.name.trim()) errs.name = t("dns:validation_name_required");
+    if (!form.value.trim()) errs.value = t("dns:validation_value_required");
+    if (form.ttl < 0) errs.ttl = t("dns:validation_ttl_min");
     setFormErrors(errs);
     if (Object.keys(errs).length) return;
 
@@ -192,7 +197,7 @@ export function DNS() {
         `${API_BASE}/dns/zones/${encodeURIComponent(selectedZone)}/records`,
         body,
       );
-      setToast({ type: "success", message: "레코드가 추가되었습니다" });
+      setToast({ type: "success", message: t("dns:toast_record_added") });
       setCreateOpen(false);
       setForm(EMPTY_FORM);
       setFormErrors({});
@@ -201,7 +206,8 @@ export function DNS() {
       setToast({
         type: "error",
         message:
-          (err as { message?: string })?.message ?? "레코드 추가에 실패했습니다",
+          (err as { message?: string })?.message ??
+          t("dns:toast_record_add_failed"),
       });
     } finally {
       setSubmitting(false);
@@ -216,14 +222,14 @@ export function DNS() {
       await api.delete(
         `${API_BASE}/dns/zones/${encodeURIComponent(selectedZone)}/records/${encodeURIComponent(name)}`,
       );
-      setToast({ type: "success", message: "레코드가 삭제되었습니다" });
+      setToast({ type: "success", message: t("dns:toast_record_deleted") });
       setConfirmName(null);
       fetchRecords();
     } catch (err) {
       setToast({
         type: "error",
         message:
-          (err as { message?: string })?.message ?? "삭제에 실패했습니다",
+          (err as { message?: string })?.message ?? t("dns:toast_delete_failed"),
       });
     } finally {
       setDeletingName(null);
@@ -234,7 +240,7 @@ export function DNS() {
   const columns = [
     {
       key: "name",
-      header: "이름",
+      header: t("dns:th_name"),
       render: (r: DNSRecord) => (
         <span className="font-mono text-sm font-medium text-primary">
           {r.name || "@"}
@@ -243,14 +249,14 @@ export function DNS() {
     },
     {
       key: "type",
-      header: "유형",
+      header: t("dns:th_type"),
       render: (r: DNSRecord) => (
         <span className="badge bg-blue/10 text-blue">{r.type}</span>
       ),
     },
     {
       key: "value",
-      header: "값",
+      header: t("dns:th_value"),
       render: (r: DNSRecord) => (
         <span
           className="block max-w-[320px] truncate font-mono text-xs text-secondary"
@@ -262,11 +268,11 @@ export function DNS() {
     },
     {
       key: "ttl",
-      header: "TTL",
+      header: t("dns:th_ttl"),
       render: (r: DNSRecord) => (
         <span className="inline-flex items-center gap-1 font-mono text-xs text-muted">
           <Clock size={12} />
-          {formatTtl(r.ttl)}
+          {formatTtl(r.ttl, t)}
         </span>
       ),
     },
@@ -282,7 +288,7 @@ export function DNS() {
                 onClick={() => setConfirmName(null)}
                 className="rounded px-2 py-1 text-xs text-muted hover:text-primary"
               >
-                취소
+                {t("common:cancel")}
               </button>
               <button
                 onClick={() => handleDelete(r.name)}
@@ -294,14 +300,14 @@ export function DNS() {
                 ) : (
                   <Trash2 size={12} />
                 )}
-                확인
+                {t("common:confirm")}
               </button>
             </div>
           ) : (
             <button
               onClick={() => setConfirmName(r.name)}
               className="rounded p-1.5 text-muted transition-colors hover:bg-red/10 hover:text-red"
-              title="레코드 삭제"
+              title={t("dns:title_delete_record")}
             >
               <Trash2 size={15} />
             </button>
@@ -317,17 +323,15 @@ export function DNS() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-primary">DNS 관리</h1>
-          <p className="mt-0.5 text-sm text-secondary">
-            DNS 영역 및 레코드를 관리합니다
-          </p>
+          <h1 className="text-xl font-bold text-primary">{t("dns:title")}</h1>
+          <p className="mt-0.5 text-sm text-secondary">{t("dns:subtitle")}</p>
         </div>
         <button
           className="btn-primary"
           onClick={openCreate}
           disabled={!selectedZone}
         >
-          <Plus size={16} /> 레코드 추가
+          <Plus size={16} /> {t("dns:btn_add_record")}
         </button>
       </div>
 
@@ -340,7 +344,7 @@ export function DNS() {
             onClick={fetchZones}
             className="ml-auto rounded px-2 py-1 text-xs hover:bg-red/10"
           >
-            재시도
+            {t("dns:btn_retry")}
           </button>
         </div>
       )}
@@ -354,8 +358,8 @@ export function DNS() {
         <div className="card">
           <EmptyState
             icon={Globe}
-            title="DNS 영역이 없습니다"
-            description="구성된 DNS 영역을 찾을 수 없습니다."
+            title={t("dns:empty_no_zones_title")}
+            description={t("dns:empty_no_zones_desc")}
           />
         </div>
       ) : (
@@ -384,7 +388,7 @@ export function DNS() {
                     : "bg-muted/15 text-muted",
                 )}
               >
-                {zoneTypeBadge(zone.zone_type)}
+                {zoneTypeBadge(zone.zone_type, t)}
               </span>
             </button>
           ))}
@@ -401,7 +405,7 @@ export function DNS() {
                 {selectedZone}
               </span>
               <span className="text-xs text-muted">
-                · {records.length}개 레코드
+                {t("dns:records_count", { count: records.length })}
               </span>
             </div>
           </div>
@@ -414,7 +418,7 @@ export function DNS() {
                 onClick={fetchRecords}
                 className="ml-auto rounded px-2 py-1 text-xs hover:bg-red/10"
               >
-                재시도
+                {t("dns:btn_retry")}
               </button>
             </div>
           )}
@@ -422,11 +426,11 @@ export function DNS() {
           {records.length === 0 && !recordsLoading && !recordsError ? (
             <EmptyState
               icon={Globe}
-              title="레코드가 없습니다"
-              description="이 영역에 DNS 레코드를 추가하세요."
+              title={t("dns:empty_no_records_title")}
+              description={t("dns:empty_no_records_desc")}
               action={
                 <button className="btn-primary" onClick={openCreate}>
-                  <Plus size={16} /> 레코드 추가
+                  <Plus size={16} /> {t("dns:btn_add_record")}
                 </button>
               }
             />
@@ -435,7 +439,7 @@ export function DNS() {
               columns={columns}
               data={records}
               loading={recordsLoading}
-              emptyMessage="레코드가 없습니다"
+              emptyMessage={t("dns:empty_no_records")}
             />
           )}
         </div>
@@ -445,64 +449,64 @@ export function DNS() {
       <Drawer
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        title="레코드 추가"
+        title={t("dns:drawer_title_create")}
         width="lg"
       >
         <form onSubmit={handleCreate} className="space-y-5">
           {selectedZone && (
             <div className="flex items-center gap-2 rounded-md border border-border-subtle bg-hover px-3 py-2 text-xs">
               <Network size={14} className="text-blue" />
-              <span className="text-muted">대상 영역:</span>
+              <span className="text-muted">{t("dns:target_zone_label")}</span>
               <span className="font-mono text-secondary">{selectedZone}</span>
             </div>
           )}
 
-          <Field label="이름 *" error={formErrors.name}>
+          <Field label={t("dns:label_name")} error={formErrors.name}>
             <input
               className="input font-mono"
               value={form.name}
               onChange={(e) => setField("name", e.target.value)}
-              placeholder="@ 또는 www"
+              placeholder={t("dns:ph_name")}
               autoComplete="off"
             />
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label="유형">
+            <Field label={t("dns:label_type")}>
               <SelectInput
                 value={form.type}
                 onChange={(v) => setField("type", v)}
               >
-                {RECORD_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
+                {RECORD_TYPES.map((rt) => (
+                  <option key={rt} value={rt}>
+                    {rt}
                   </option>
                 ))}
               </SelectInput>
             </Field>
 
-            <Field label="TTL (초)">
+            <Field label={t("dns:label_ttl")}>
               <input
                 type="number"
                 min={0}
                 className="input font-mono"
                 value={form.ttl}
                 onChange={(e) => setField("ttl", e.target.value)}
-                placeholder="3600"
+                placeholder={t("dns:ph_ttl")}
               />
             </Field>
           </div>
 
           <Field
-            label="값 *"
+            label={t("dns:label_value")}
             error={formErrors.value}
             hint={
               form.type === "MX"
-                ? "예: 10 mail.example.com."
+                ? t("dns:hint_value_mx")
                 : form.type === "A"
-                  ? "예: 192.168.1.10"
+                  ? t("dns:hint_value_a")
                   : form.type === "CNAME"
-                    ? "예: target.example.com."
+                    ? t("dns:hint_value_cname")
                     : undefined
             }
           >
@@ -512,10 +516,10 @@ export function DNS() {
               onChange={(e) => setField("value", e.target.value)}
               placeholder={
                 form.type === "A"
-                  ? "192.168.1.10"
+                  ? t("dns:ph_value_a")
                   : form.type === "MX"
-                    ? "10 mail.example.com."
-                    : "값 입력"
+                    ? t("dns:ph_value_mx")
+                    : t("dns:ph_value")
               }
               autoComplete="off"
             />
@@ -527,7 +531,7 @@ export function DNS() {
               className="btn-outline"
               onClick={() => setCreateOpen(false)}
             >
-              취소
+              {t("dns:btn_cancel")}
             </button>
             <button
               type="submit"
@@ -536,11 +540,12 @@ export function DNS() {
             >
               {submitting ? (
                 <>
-                  <Loader2 size={16} className="animate-spin" /> 추가 중...
+                  <Loader2 size={16} className="animate-spin" />{" "}
+                  {t("dns:btn_adding")}
                 </>
               ) : (
                 <>
-                  <Plus size={16} /> 추가
+                  <Plus size={16} /> {t("dns:btn_add")}
                 </>
               )}
             </button>

@@ -296,7 +296,104 @@ Each preview page maps to a React route:
 
 ---
 
-## 8. Responsibilities
+## 8. Frontend Architecture
+
+### 8.1 File Structure Policy
+
+The React SPA **must not** be a single monolithic file. The following modular
+structure is **required**:
+
+```
+frontend/src/
+├── App.tsx                  # Router + top-level layout only
+├── main.tsx                 # Entry point
+├── api/
+│   └── client.ts            # Axios instance + interceptors
+├── components/
+│   ├── layout/              # AppShell, Sidebar, Topbar
+│   └── ui/                  # Reusable: DataTable, Drawer, Pagination, etc.
+├── contexts/                # React contexts (Auth, Theme, etc.)
+├── pages/                   # One file per route
+│   ├── Dashboard.tsx
+│   ├── Users.tsx
+│   └── ...
+├── types/                   # TypeScript interfaces
+│   └── api.ts
+└── hooks/                   # Custom hooks
+```
+
+### 8.2 File Splitting Rules
+
+| Rule | Guideline |
+|------|-----------|
+| **One page per file** | Each route gets its own file under `pages/` |
+| **Shared UI extracted** | Reusable components go in `components/ui/` |
+| **Max file size** | 500 lines. If larger, extract sub-components into separate files |
+| **Type safety** | All API types in `types/api.ts`, imported by pages |
+| **No inline mock data** | Pages must call the API, never hardcode arrays |
+
+### 8.3 Rationale
+
+Single-file HTML prototypes (`previews/*.html`) are acceptable as **design
+exploration**. Production React code **must** be modular for:
+
+- Maintainability (smaller diffs, easier review)
+- Testability (isolated component tests)
+- Tree-shaking (only loaded routes are bundled)
+- Team collaboration (parallel development without merge conflicts)
+
+---
+
+## 9. Mock Data Governance
+
+### 9.1 Mock Mode Principles
+
+Mock mode (`APP_MODE=mock`) simulates a **freshly provisioned** Active Directory
+domain. The mock backend must contain **only default Windows AD objects**:
+
+| Object Type | Default Contents |
+|-------------|-----------------|
+| **Users** | `Administrator`, `Guest`, `krbtgt`, `DefaultAccount` |
+| **Groups** | Built-in domain groups only (Domain Admins, Domain Users, Domain Guests, Enterprise Admins, Schema Admins, etc.) |
+| **OUs** | `Domain Controllers` (the single default OU) |
+| **Computers** | *(empty — no machines have joined yet)* |
+| **GPOs** | `Default Domain Policy`, `Default Domain Controllers Policy` |
+
+### 9.2 Forbidden Mock Patterns
+
+```python
+# ❌ FORBIDDEN: Inflating stats with fake numbers
+return UserStats(
+    total=len(self.users) + 12807,     # ← fake inflation
+    active=counts[ACTIVE] + 12391,     # ← fake inflation
+)
+
+# ✅ CORRECT: Return actual counts from seed data
+return UserStats(
+    total=len(self.users),
+    active=counts[ACTIVE],
+)
+```
+
+```python
+# ❌ FORBIDDEN: Generating random fake users
+for i in range(40):
+    name = f"{korean_surnames[i%10]}{given_names[i%10]}"
+    username = f"user{i:04d}"
+
+# ✅ CORRECT: Only built-in AD accounts
+for name in ["Administrator", "Guest", "krbtgt"]:
+    ...
+```
+
+### 9.3 Dashboard Empty States
+
+When no real data exists (e.g., no login events, no alerts), the dashboard
+must show **empty states** ("데이터 없음"), not fabricated data.
+
+---
+
+## 10. Responsibilities
 
 | Role | Responsibility in Design Integration |
 |------|-------------------------------------|
@@ -306,3 +403,64 @@ Each preview page maps to a React route:
 | **Maintainer** | Gate 3 review (dead button / state handling verification) |
 
 > **Key:** Designers decide "what to show." Developers decide "how it works." Design does not dictate how things work.
+
+---
+
+## 11. Frontend i18n Implementation Guide
+
+### 11.1 Architecture
+
+```
+frontend/src/i18n/
+├── index.ts              # i18next config (LanguageDetector + initReactI18next)
+└── locales/
+    ├── en.json           # English translations (default)
+    └── ko.json           # Korean translations
+```
+
+- **Detection:** `localStorage` key `lang` → `navigator.language` → fallback `en`
+- **Default namespace:** `common`
+- **13 namespaces:** one per page/section + `common` + `api`
+
+### 11.2 Usage in Components
+
+```tsx
+import { useTranslation } from "react-i18next";
+
+function MyComponent() {
+  const { t } = useTranslation();
+
+  return <h1>{t("users:title")}</h1>;
+  // Interpolation:
+  return <span>{t("users:subtitle_count", { count: 42 })}</span>;
+}
+```
+
+### 11.3 Adding a New String
+
+1. Add key to `en.json` under the appropriate namespace
+2. Add the same key to `ko.json` with Korean translation
+3. Use `t("namespace:key")` in the component
+4. Never use a string literal directly in JSX
+
+### 11.4 Language Switcher
+
+The Settings page (`pages/Settings.tsx`) contains a `<select>` bound to
+`i18n.language`. Calling `i18n.changeLanguage(value)` instantly updates all
+visible text and persists the choice to `localStorage["lang"]`.
+
+### 11.5 Locale-Aware Code
+
+Components that format dates/numbers must select locale dynamically:
+
+```tsx
+const { t, i18n } = useTranslation();
+const locale = i18n.language === "ko" ? "ko-KR" : "en-US";
+new Date().toLocaleString(locale);
+```
+
+### 11.6 Testing
+
+- Tests import `./i18n` in `test-setup.ts` to initialize i18next
+- Default test language is `en` — assertions use English strings
+- Status badges render `t("common:status_enabled")` → "Active" (en)

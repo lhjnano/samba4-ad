@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   KeyRound,
   Lock,
@@ -34,6 +35,8 @@ const EMPTY_POLICY: DomainPolicy = {
 
 // ── Page ───────────────────────────────────────────
 export function Policies() {
+  const { t } = useTranslation();
+
   const [policy, setPolicy] = useState<DomainPolicy>(EMPTY_POLICY);
   const [original, setOriginal] = useState<DomainPolicy>(EMPTY_POLICY);
   const [loading, setLoading] = useState(true);
@@ -55,13 +58,12 @@ export function Policies() {
       setOriginal(data);
     } catch (err) {
       setError(
-        (err as { message?: string })?.message ??
-          "도메인 정책을 불러오지 못했습니다",
+        (err as { message?: string })?.message ?? t("policies:error_load"),
       );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchPolicy();
@@ -70,8 +72,8 @@ export function Policies() {
   // ── Auto-dismiss toast ───────────────────────────
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(t);
+    const id = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(id);
   }, [toast]);
 
   // ── Update helpers ───────────────────────────────
@@ -102,12 +104,13 @@ export function Policies() {
       );
       setPolicy(data);
       setOriginal(data);
-      setToast({ type: "success", message: "정책이 저장되었습니다" });
+      setToast({ type: "success", message: t("policies:toast_policy_saved") });
     } catch (err) {
       setToast({
         type: "error",
         message:
-          (err as { message?: string })?.message ?? "정책 저장에 실패했습니다",
+          (err as { message?: string })?.message ??
+          t("policies:toast_policy_save_failed"),
       });
     } finally {
       setSaving(false);
@@ -129,9 +132,11 @@ export function Policies() {
       <form onSubmit={handleSave} className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-primary">도메인 정책</h1>
+            <h1 className="text-xl font-bold text-primary">
+              {t("policies:title")}
+            </h1>
             <p className="mt-0.5 text-sm text-secondary">
-              비밀번호 및 계정 잠금 정책을 관리합니다
+              {t("policies:subtitle")}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -142,7 +147,7 @@ export function Policies() {
                 onClick={reset}
                 disabled={saving}
               >
-                취소
+                {t("policies:btn_cancel")}
               </button>
             )}
             <button
@@ -152,11 +157,12 @@ export function Policies() {
             >
               {saving ? (
                 <>
-                  <Loader2 size={16} className="animate-spin" /> 저장 중...
+                  <Loader2 size={16} className="animate-spin" />{" "}
+                  {t("policies:btn_saving")}
                 </>
               ) : (
                 <>
-                  <Save size={16} /> 저장
+                  <Save size={16} /> {t("policies:btn_save")}
                 </>
               )}
             </button>
@@ -172,7 +178,7 @@ export function Policies() {
               onClick={fetchPolicy}
               className="ml-auto rounded px-2 py-1 text-xs hover:bg-red/10"
             >
-              재시도
+              {t("policies:btn_retry")}
             </button>
           </div>
         )}
@@ -184,9 +190,11 @@ export function Policies() {
               <KeyRound size={16} />
             </span>
             <div>
-              <h2 className="text-sm font-semibold text-primary">비밀번호 정책</h2>
+              <h2 className="text-sm font-semibold text-primary">
+                {t("policies:section_password_policy")}
+              </h2>
               <p className="text-xs text-muted">
-                도메인 계정 비밀번호 복잡성 및 수명 규칙
+                {t("policies:section_password_policy_sub")}
               </p>
             </div>
           </div>
@@ -201,10 +209,10 @@ export function Policies() {
                 />
                 <div>
                   <p className="text-sm font-medium text-primary">
-                    복잡한 비밀번호 요구
+                    {t("policies:toggle_complex_passwords")}
                   </p>
                   <p className="text-xs text-muted">
-                    대소문자, 숫자, 기호를 조합하도록 강제합니다
+                    {t("policies:toggle_complex_passwords_hint")}
                   </p>
                 </div>
               </div>
@@ -216,45 +224,45 @@ export function Policies() {
 
             <PolicyNumberRow
               icon={KeyRound}
-              label="최소 비밀번호 길이"
-              hint="비밀번호에 허용되는 최소 문자 수"
+              label={t("policies:label_min_password_length")}
+              hint={t("policies:hint_min_password_length")}
               value={policy.min_password_length}
               min={0}
               max={128}
-              suffix="자"
+              suffix={t("policies:suffix_chars")}
               onChange={(v) => setNumber("min_password_length", v)}
             />
 
             <PolicyNumberRow
               icon={History}
-              label="비밀번호 기록"
-              hint="재사용을 방지하기 위해 보관할 이전 비밀번호 수"
+              label={t("policies:label_password_history")}
+              hint={t("policies:hint_password_history")}
               value={policy.password_history}
               min={0}
               max={24}
-              suffix="개"
+              suffix={t("policies:suffix_count")}
               onChange={(v) => setNumber("password_history", v)}
             />
 
             <PolicyNumberRow
               icon={CalendarClock}
-              label="최대 비밀번호 사용 기간"
-              hint="비밀번호를 변경해야 하는 기간 (0 = 사용 안 함)"
+              label={t("policies:label_max_password_age")}
+              hint={t("policies:hint_max_password_age")}
               value={policy.max_password_age_days}
               min={0}
               max={999}
-              suffix="일"
+              suffix={t("policies:suffix_days")}
               onChange={(v) => setNumber("max_password_age_days", v)}
             />
 
             <PolicyNumberRow
               icon={Clock}
-              label="최소 비밀번호 사용 기간"
-              hint="비밀번호를 다시 변경하기 전 최소 기간 (0 = 즉시 변경 가능)"
+              label={t("policies:label_min_password_age")}
+              hint={t("policies:hint_min_password_age")}
               value={policy.min_password_age_days}
               min={0}
               max={998}
-              suffix="일"
+              suffix={t("policies:suffix_days")}
               onChange={(v) => setNumber("min_password_age_days", v)}
             />
           </div>
@@ -268,10 +276,10 @@ export function Policies() {
             </span>
             <div>
               <h2 className="text-sm font-semibold text-primary">
-                계정 잠금 정책
+                {t("policies:section_lockout_policy")}
               </h2>
               <p className="text-xs text-muted">
-                로그인 실패 시 계정 잠금 동작 제어
+                {t("policies:section_lockout_policy_sub")}
               </p>
             </div>
           </div>
@@ -279,23 +287,23 @@ export function Policies() {
           <div className="divide-y divide-border-subtle">
             <PolicyNumberRow
               icon={Lock}
-              label="계정 잠금 임계값"
-              hint="이 횟수만큼 로그인 실패 시 계정이 잠깁니다 (0 = 잠금 안 함)"
+              label={t("policies:label_lockout_threshold")}
+              hint={t("policies:hint_lockout_threshold")}
               value={policy.account_lockout_threshold}
               min={0}
               max={999}
-              suffix="회"
+              suffix={t("policies:suffix_times")}
               onChange={(v) => setNumber("account_lockout_threshold", v)}
             />
 
             <PolicyNumberRow
               icon={Clock}
-              label="계정 잠금 기간"
-              hint="잠긴 계정이 자동으로 잠금 해제되기까지의 시간 (0 = 수동 해제만)"
+              label={t("policies:label_lockout_duration")}
+              hint={t("policies:hint_lockout_duration")}
               value={policy.account_lockout_duration_minutes}
               min={0}
               max={99999}
-              suffix="분"
+              suffix={t("policies:suffix_minutes")}
               onChange={(v) =>
                 setNumber("account_lockout_duration_minutes", v)
               }
@@ -303,12 +311,12 @@ export function Policies() {
 
             <PolicyNumberRow
               icon={History}
-              label="잠금 카운터 초기화 시간"
-              hint="실패 횟수가 0으로 초기화되기까지의 시간"
+              label={t("policies:label_lockout_reset_time")}
+              hint={t("policies:hint_lockout_reset_time")}
               value={policy.reset_lockout_after_minutes}
               min={0}
               max={99999}
-              suffix="분"
+              suffix={t("policies:suffix_minutes")}
               onChange={(v) => setNumber("reset_lockout_after_minutes", v)}
             />
           </div>
@@ -319,7 +327,7 @@ export function Policies() {
           <div className="sticky bottom-4 z-30 flex items-center justify-between rounded-lg border border-blue/40 bg-card/95 px-4 py-3 shadow-xl backdrop-blur">
             <span className="flex items-center gap-2 text-sm text-secondary">
               <AlertCircle size={15} className="text-yellow" />
-              저장하지 않은 변경 사항이 있습니다
+              {t("policies:unsaved_changes")}
             </span>
             <div className="flex gap-2">
               <button
@@ -328,7 +336,7 @@ export function Policies() {
                 onClick={reset}
                 disabled={saving}
               >
-                취소
+                {t("policies:btn_cancel")}
               </button>
               <button
                 type="submit"
@@ -340,7 +348,7 @@ export function Policies() {
                 ) : (
                   <Save size={16} />
                 )}
-                저장
+                {t("policies:btn_save")}
               </button>
             </div>
           </div>
