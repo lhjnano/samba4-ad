@@ -33,9 +33,9 @@ type Toast = { type: "success" | "error"; message: string } | null;
 // Static-ish system info (frontend build-time values)
 const SYSTEM_INFO = {
   appVersion: "1.0.0",
-  mode: "ldap",
-  pythonVersion: "3.11",
-  sambaVersion: "4.21",
+  mode: import.meta.env.VITE_APP_MODE || "mock",
+  pythonVersion: "3.12",
+  sambaVersion: "—",
 };
 
 interface LdapSettings {
@@ -48,8 +48,8 @@ interface LdapSettings {
 const DEFAULT_LDAP: LdapSettings = {
   host: "127.0.0.1",
   port: "389",
-  bindDn: "CN=Administrator,CN=Users,DC=corp,DC=example,DC=com",
-  baseDn: "DC=corp,DC=example,DC=com",
+  bindDn: "CN=Administrator,CN=Users,DC=corp,DC=local",
+  baseDn: "DC=corp,DC=local",
 };
 
 // ── Page ───────────────────────────────────────────
@@ -232,7 +232,7 @@ export function Settings() {
                 label={t("settings:label_domain_name")}
                 value={stats?.domain_controllers?.length
                   ? deriveDomainName(stats)
-                  : "corp.example.com"}
+                  : "corp.local"}
                 mono
               />
               <InfoItem
@@ -444,7 +444,7 @@ function deriveDomainName(stats: DashboardStats | null): string {
     const parts = dc.split(".");
     if (parts.length > 2) return parts.slice(1).join(".");
   }
-  return "corp.example.com";
+  return "corp.local";
 }
 
 function deriveNetbiosName(stats: DashboardStats | null): string {

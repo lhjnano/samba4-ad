@@ -923,7 +923,7 @@ class MockDirectory:
             forest_name="CORP.LOCAL",
             domain_functional_level="2012_R2",
             forest_functional_level="2012_R2",
-            dc_hostname="dom39-forest01",
+            dc_hostname="dom39-forest01.corp.local",
             dc_ip="192.168.39.1",
             object_count=len(self.users) + len(self.groups) + len(self.computers),
             created="",

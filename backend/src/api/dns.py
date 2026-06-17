@@ -52,34 +52,42 @@ _mock_zones: dict[str, DNSZone] = {
         serial=int(time.time()),
         records=[
             DNSRecord(
-                name="@", type="SOA", value="dc01.corp.local. hostmaster.corp.local."
+                name="@",
+                type="SOA",
+                value="dom39-forest01.corp.local. hostmaster.corp.local.",
             ),
-            DNSRecord(name="@", type="NS", value="dc01.corp.local."),
-            DNSRecord(name="@", type="A", value="192.168.1.10"),
-            DNSRecord(name="dc01", type="A", value="192.168.1.10"),
+            DNSRecord(name="@", type="NS", value="dom39-forest01.corp.local."),
+            DNSRecord(name="@", type="A", value="192.168.39.1"),
+            DNSRecord(name="dom39-forest01", type="A", value="192.168.39.1"),
             DNSRecord(
-                name="_ldap._tcp", type="SRV", value="0 100 389 dc01.corp.local."
+                name="_ldap._tcp",
+                type="SRV",
+                value="0 100 389 dom39-forest01.corp.local.",
             ),
             DNSRecord(
-                name="_kerberos._tcp", type="SRV", value="0 100 88 dc01.corp.local."
+                name="_kerberos._tcp",
+                type="SRV",
+                value="0 100 88 dom39-forest01.corp.local.",
             ),
             DNSRecord(
                 name="_ldap._tcp.Default-First-Site._sites",
                 type="SRV",
-                value="0 100 389 dc01.corp.local.",
+                value="0 100 389 dom39-forest01.corp.local.",
             ),
         ],
     ),
-    "1.168.192.in-addr.arpa": DNSZone(
-        name="1.168.192.in-addr.arpa",
+    "39.168.192.in-addr.arpa": DNSZone(
+        name="39.168.192.in-addr.arpa",
         zone_type="Primary",
         serial=int(time.time()),
         records=[
             DNSRecord(
-                name="@", type="SOA", value="dc01.corp.local. hostmaster.corp.local."
+                name="@",
+                type="SOA",
+                value="dom39-forest01.corp.local. hostmaster.corp.local.",
             ),
-            DNSRecord(name="@", type="NS", value="dc01.corp.local."),
-            DNSRecord(name="10", type="PTR", value="dc01.corp.local."),
+            DNSRecord(name="@", type="NS", value="dom39-forest01.corp.local."),
+            DNSRecord(name="1", type="PTR", value="dom39-forest01.corp.local."),
         ],
     ),
 }

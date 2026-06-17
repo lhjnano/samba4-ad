@@ -21,7 +21,7 @@ interface Props {
 export function SetupWizard({ onDone }: Props) {
   const { t } = useTranslation();
   const [step, setStep] = useState(0);
-  const [domainName, setDomainName] = useState("corp.example.com");
+  const [domainName, setDomainName] = useState("corp.local");
   const [netbiosName, setNetbiosName] = useState("CORP");
   const [dnsForwarder, setDnsForwarder] = useState("8.8.8.8");
   const [adminPassword, setAdminPassword] = useState("");
@@ -188,7 +188,7 @@ export function SetupWizard({ onDone }: Props) {
                   className="input font-mono"
                   value={domainName}
                   onChange={(e) => setDomainName(e.target.value)}
-                  placeholder="corp.example.com"
+                  placeholder="corp.local"
                 />
                 {errors.domainName && (
                   <p className="mt-1 text-xs text-red">{errors.domainName}</p>
