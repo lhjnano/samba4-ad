@@ -119,7 +119,7 @@ export function GPOs() {
         page_size: PAGE_SIZE,
       };
       if (debouncedSearch) params.search = debouncedSearch;
-      const { data } = await api.get<Paginated<GPO>>(`${API_BASE}/gpos`, {
+      const { data } = await api.get<Paginated<GPO>>(`${API_BASE}/gpo`, {
         params,
       });
       setGPOs(data.items);
@@ -164,7 +164,7 @@ export function GPOs() {
     if (!selectedGPO) return;
     setActionLoading("delete");
     try {
-      await api.delete(`${API_BASE}/gpos/${selectedGPO.id}`);
+      await api.delete(`${API_BASE}/gpo/${selectedGPO.id}`);
       setToast({ type: "success", message: "GPO가 삭제되었습니다" });
       closeDetail();
       fetchGPOs();
@@ -202,7 +202,7 @@ export function GPOs() {
         name: form.name.trim(),
         description: form.description.trim() || undefined,
       };
-      await api.post<GPO>(`${API_BASE}/gpos`, body);
+      await api.post<GPO>(`${API_BASE}/gpo`, body);
       setToast({ type: "success", message: "GPO가 생성되었습니다" });
       setCreateOpen(false);
       setForm(EMPTY_FORM);

@@ -11,11 +11,15 @@ from src.api import (
     alerts,
     auth,
     computers,
+    dashboard,
+    dns,
     domain,
     gpo,
     groups,
     health,
+    logs,
     ou,
+    policies,
     settings,
     setup,
     stats,
@@ -35,3 +39,7 @@ api_router.include_router(health.router)
 api_router.include_router(stats.router)
 api_router.include_router(alerts.router)
 api_router.include_router(settings.router)
+api_router.include_router(dashboard.router)
+api_router.include_router(dns.router)
+api_router.include_router(logs.router)
+api_router.include_router(policies.router)

@@ -103,7 +103,7 @@ export function OUs() {
         page_size: PAGE_SIZE,
       };
       if (debouncedSearch) params.search = debouncedSearch;
-      const { data } = await api.get<Paginated<ADOU>>(`${API_BASE}/ous`, {
+      const { data } = await api.get<Paginated<ADOU>>(`${API_BASE}/ou`, {
         params,
       });
       setOUs(data.items);
@@ -148,7 +148,7 @@ export function OUs() {
     if (!selectedOU) return;
     setActionLoading("delete");
     try {
-      await api.delete(`${API_BASE}/ous/${selectedOU.id}`);
+      await api.delete(`${API_BASE}/ou/${selectedOU.id}`);
       setToast({ type: "success", message: "OU가 삭제되었습니다" });
       closeDetail();
       fetchOUs();
@@ -187,7 +187,7 @@ export function OUs() {
         description: form.description.trim() || undefined,
         parent_dn: form.parent_dn.trim() || undefined,
       };
-      await api.post<ADOU>(`${API_BASE}/ous`, body);
+      await api.post<ADOU>(`${API_BASE}/ou`, body);
       setToast({ type: "success", message: "OU가 생성되었습니다" });
       setCreateOpen(false);
       setForm(EMPTY_FORM);
