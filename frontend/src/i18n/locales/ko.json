@@ -591,6 +591,21 @@
     "desc_policies": "도메인 전체 비밀번호 및 계정 잠금 정책을 구성합니다. 최소 비밀번호 길이, 복잡성 요구사항, 비밀번호 수명 제한, 기록 보관, 잠금 임계값, 잠금 기간, 리셋 시간을 설정할 수 있습니다.",
     "desc_logs": "인증, LDAP 쿼리, DNS 조회, Kerberos 활동, 복제 상태, 보안 알림을 포함한 시스템 감사 이벤트를 조회합니다. 심각도(정보, 경고, 중요)와 날짜 범위로 필터링할 수 있습니다. 10초마다 자동 새로고침됩니다.",
     "desc_settings": "시스템 정보(앱 버전, 실행 모드, Python/Samba 버전), 도메인 구성(도메인 이름, NetBIOS, 기능 수준, 도메인 컨트롤러), LDAP 연결 설정, 백업/복구 옵션을 확인할 수 있습니다.",
-    "desc_language": "인터페이스 언어를 한국어와 영어로 전환합니다. 설정은 localStorage에 저장되어 세션 간 유지됩니다. 상단바, 로그인 페이지, 설정 페이지에서 사용할 수 있습니다."
+    "desc_language": "인터페이스 언어를 한국어와 영어로 전환합니다. 설정은 localStorage에 저장되어 세션 간 유지됩니다. 상단바, 로그인 페이지, 설정 페이지에서 사용할 수 있습니다.",
+    "section_connection": "도메인 연결 정보",
+    "connection_intro": "NAS, SMB 클라이언트, Linux 서버 또는 다른 기기를 이 Active Directory 도메인에 연결할 때 다음 값을 사용하세요.",
+    "conn_realm": "Realm",
+    "conn_netbios": "NetBIOS 도메인",
+    "conn_dc_host": "도메인 컨트롤러",
+    "conn_dc_ip": "DC IP 주소",
+    "conn_dns": "DNS 서버",
+    "conn_base_dn": "Base DN",
+    "conn_ldap_url": "LDAP 서버",
+    "conn_kerberos": "Kerberos Realm",
+    "conn_admin": "관리자 계정",
+    "nas_example_title": "NAS / SMB 클라이언트 — 필수 입력값",
+    "nas_example": "DNS 서버:       {{dcIp}}\n도메인 (FQDN):  {{realm}}\nNetBIOS 이름:  {{netbios}}\nRealm:         {{realm}}\n\nLDAP Base DN:  {{baseDn}}\nLDAP 서버:     ldap://{{dcIp}}:389\n\nAD 사용자명:   Administrator@{{realm}}\nAD 비밀번호:   (관리자 비밀번호)\n\n워크그룹:       {{netbios}}",
+    "smbconf_title": "Linux / smb.conf 예시",
+    "smbconf_example": "[global]\n   workgroup = {{netbios}}\n   realm = {{realm}}\n   security = ads\n   dns forwarder = {{dcIp}}\n   idmap config * : backend = tdb\n   idmap config * : range = 3000-7999\n   idmap config {{netbios}} : backend = rid\n   idmap config {{netbios}} : range = 10000-999999\n   template shell = /bin/bash\n   template homedir = /home/%U"
   }
 }

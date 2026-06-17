@@ -591,6 +591,21 @@
     "desc_policies": "Configure domain-wide password and account lockout policies. Set minimum password length, complexity requirements, password age limits, history retention, lockout threshold, duration, and reset window.",
     "desc_logs": "View system audit events including authentication, LDAP queries, DNS lookups, Kerberos activity, replication status, and security alerts. Filter by severity (info, warning, critical) and date range. Auto-refreshes every 10 seconds.",
     "desc_settings": "View system information (app version, run mode, Python/Samba versions), domain configuration (domain name, NetBIOS, functional level, domain controllers), LDAP connection settings, and backup/restore options.",
-    "desc_language": "Switch the interface language between English and Korean. The setting is saved in localStorage and persists across sessions. Available in the top bar, login page, and settings page."
+    "desc_language": "Switch the interface language between English and Korean. The setting is saved in localStorage and persists across sessions. Available in the top bar, login page, and settings page.",
+    "section_connection": "Domain Connection Info",
+    "connection_intro": "Use these values to connect NAS, SMB clients, Linux servers, or other devices to this Active Directory domain.",
+    "conn_realm": "Realm",
+    "conn_netbios": "NetBIOS Domain",
+    "conn_dc_host": "Domain Controller",
+    "conn_dc_ip": "DC IP Address",
+    "conn_dns": "DNS Server",
+    "conn_base_dn": "Base DN",
+    "conn_ldap_url": "LDAP Server",
+    "conn_kerberos": "Kerberos Realm",
+    "conn_admin": "Admin Account",
+    "nas_example_title": "NAS / SMB Client — Required Fields",
+    "nas_example": "DNS Server:     {{dcIp}}\nDomain (FQDN):  {{realm}}\nNetBIOS Name:  {{netbios}}\nRealm:         {{realm}}\n\nLDAP Base DN:  {{baseDn}}\nLDAP Server:   ldap://{{dcIp}}:389\n\nAD Username:   Administrator@{{realm}}\nAD Password:   (your admin password)\n\nWorkgroup:     {{netbios}}",
+    "smbconf_title": "Linux / smb.conf Example",
+    "smbconf_example": "[global]\n   workgroup = {{netbios}}\n   realm = {{realm}}\n   security = ads\n   dns forwarder = {{dcIp}}\n   idmap config * : backend = tdb\n   idmap config * : range = 3000-7999\n   idmap config {{netbios}} : backend = rid\n   idmap config {{netbios}} : range = 10000-999999\n   template shell = /bin/bash\n   template homedir = /home/%U"
   }
 }
