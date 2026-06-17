@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from src.models.common import Email, encode_id
 from src.models.domain import AccountStatus, UserAccountControl
@@ -72,7 +72,18 @@ class UserSummary(BaseModel):
     email: Email | None = None
     ou: str = Field(description="Parent OU name extracted from DN")
     status: AccountStatus
+    enabled: bool = True
+    locked: bool = False
     last_logon: datetime | None = None
+
+    @model_validator(mode="after")
+    def _derive_status_fields(self) -> UserSummary:
+        """Derive enabled/locked booleans from status if not explicitly set."""
+        if self.status == AccountStatus.LOCKED:
+            self.locked = True
+        if self.status == AccountStatus.INACTIVE:
+            self.enabled = False
+        return self
 
     @field_validator("id", mode="before")
     @classmethod
@@ -112,12 +123,23 @@ class UserDetail(BaseModel):
     dn: str
     ou: str
     status: AccountStatus
+    enabled: bool = True
+    locked: bool = False
     user_account_control: int
     when_created: datetime | None = None
     password_expires: datetime | None = None
     object_sid: str | None = None
     groups: list[UserGroupMembership] = Field(default_factory=list)
     login_history: list[LoginEvent] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _derive_status_fields(self) -> UserDetail:
+        """Derive enabled/locked booleans from status."""
+        if self.status == AccountStatus.LOCKED:
+            self.locked = True
+        if self.status == AccountStatus.INACTIVE:
+            self.enabled = False
+        return self
 
 
 class UserStats(BaseModel):

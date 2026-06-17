@@ -249,9 +249,11 @@ export function Users() {
     if (!selectedUser) return;
     setActionLoading("toggle");
     try {
+      const newStatus = selectedUser.enabled ? "inactive" : "active";
       const { data } = await api.patch<ADUser>(
-        `${API_BASE}/users/${selectedUser.id}`,
-        { enabled: !selectedUser.enabled },
+        `${API_BASE}/users/${selectedUser.id}/status`,
+        {},
+        { params: { status: newStatus } },
       );
       setSelectedUser(data);
       patchRowInList(data);
