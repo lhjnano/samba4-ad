@@ -198,13 +198,13 @@ class ProvisioningService:
     # Private helpers
     # ------------------------------------------------------------------
     def _is_provisioned(self) -> bool:
-        """Check if smb.conf exists and has domain controller role."""
+        """Check if smb.conf exists and has AD domain controller role."""
         if not os.path.isfile(self._smb_conf):
             return False
         try:
             with open(self._smb_conf, encoding="utf-8") as f:
-                content = f.read()
-            return "server role" in content and "dc" in content.lower()
+                content = f.read().lower()
+            return "server role" in content and "domain controller" in content
         except OSError:
             return False
 

@@ -23,7 +23,20 @@ router = APIRouter(prefix="/setup", tags=["setup"])
     summary="Check if domain is provisioned",
 )
 def get_setup_status() -> SetupStatus:
-    """Returns whether the AD domain is already set up on this server."""
+    """Returns whether the AD domain is already set up on this server.
+
+    In mock mode, always returns provisioned=True (simulated domain).
+    In LDAP mode, checks the actual smb.conf and Samba process state.
+    """
+    if global_settings.app_mode == "mock":
+        return SetupStatus(
+            provisioned=True,
+            realm="CORP.LOCAL",
+            domain_name="CORP",
+            smb_conf_path="/etc/samba/smb.conf",
+            samba_running=True,
+            ldap_reachable=True,
+        )
     service = ProvisioningService(global_settings)
     return service.get_status()
 
