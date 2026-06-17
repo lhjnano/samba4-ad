@@ -907,9 +907,9 @@ class MockDirectory:
             1 for g in self.gpos.values() if g["status"] == GpoStatus.DISABLED
         )
         return GpoStats(
-            total=len(self.gpos) + 20,
-            active=active + 18,
-            enforced=enforced + 4,
+            total=len(self.gpos),
+            active=active,
+            enforced=enforced,
             disabled=disabled,
         )
 
@@ -923,12 +923,12 @@ class MockDirectory:
             forest_name="CORP.LOCAL",
             domain_functional_level="2012_R2",
             forest_functional_level="2012_R2",
-            dc_hostname="srv-dc01",
-            dc_ip="192.168.1.10",
-            object_count=len(self.users) + len(self.groups) + len(self.computers) + 1,
-            created="2024-01-15 09:30:00",
-            samba_version="4.18.2-Ubuntu",
-            server_os="Ubuntu 22.04 LTS",
+            dc_hostname="dom39-forest01",
+            dc_ip="192.168.39.1",
+            object_count=len(self.users) + len(self.groups) + len(self.computers),
+            created="",
+            samba_version="",
+            server_os="",
         )
 
     def fsmo_roles(self) -> list[FsmoRoleHolder]:
@@ -940,12 +940,13 @@ class MockDirectory:
             "InfrastructureMaster",
         ]
         return [
-            FsmoRoleHolder(role=r, holder="CN=NTDS Settings,CN=srv-dc01") for r in roles
+            FsmoRoleHolder(role=r, holder="CN=NTDS Settings,CN=dom39-forest01")
+            for r in roles
         ]
 
     def dns_servers(self) -> list[DnsServer]:
         return [
-            DnsServer(address="192.168.1.10"),
+            DnsServer(address="192.168.39.1"),
             DnsServer(address="8.8.8.8", is_forwarder=True),
         ]
 
