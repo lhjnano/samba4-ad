@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   Users,
   UserPlus,
+  UserMinus,
   Search,
   Trash2,
   FolderTree,
@@ -24,8 +25,13 @@ import { Drawer } from "@/components/ui/Drawer";
 import { Pagination } from "@/components/ui/Pagination";
 import { EmptyState } from "@/components/ui/EmptyState";
 
-// Detail endpoint may include a member list beyond the list shape.
-type GroupDetail = ADGroup & { members?: string[] };
+// Detail endpoint includes member objects with id/name/dn.
+interface GroupMember {
+  id: string;
+  name: string;
+  dn: string;
+}
+type GroupDetail = ADGroup & { members?: GroupMember[] };
 
 // ── Constants ──────────────────────────────────────
 const PAGE_SIZE = 20;
@@ -112,6 +118,7 @@ export function Groups() {
   // Detail actions
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [addMemberDn, setAddMemberDn] = useState("");
 
   // Create drawer
   const [createOpen, setCreateOpen] = useState(false);
@@ -216,6 +223,44 @@ export function Groups() {
     }
   }
 
+  // ── Add member ───────────────────────────────────
+  async function handleAddMember() {
+    if (!selectedGroup || !addMemberDn.trim()) return;
+    setActionLoading("addMember");
+    try {
+      await api.post(`${API_BASE}/groups/${selectedGroup.id}/members`, {
+        members: [addMemberDn.trim()],
+      });
+      // Refresh detail
+      const { data } = await api.get<GroupDetail>(`${API_BASE}/groups/${selectedGroup.id}`);
+      setSelectedGroup(data);
+      setAddMemberDn("");
+      setToast({ type: "success", message: t("groups:toast_member_added") });
+      fetchGroups();
+    } catch {
+      setToast({ type: "error", message: t("groups:toast_member_add_failed") });
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  // ── Remove member ────────────────────────────────
+  async function handleRemoveMember(dn: string) {
+    if (!selectedGroup) return;
+    setActionLoading("removeMember");
+    try {
+      await api.delete(`${API_BASE}/groups/${selectedGroup.id}/members/${encodeURIComponent(dn)}`);
+      // Refresh detail
+      const { data } = await api.get<GroupDetail>(`${API_BASE}/groups/${selectedGroup.id}`);
+      setSelectedGroup(data);
+      setToast({ type: "success", message: t("groups:toast_member_removed") });
+      fetchGroups();
+    } catch {
+      setToast({ type: "error", message: t("groups:toast_member_remove_failed") });
+    } finally {
+      setActionLoading(null);
+    }
+  }
   // ── Create ───────────────────────────────────────
   function openCreate() {
     setForm(EMPTY_FORM);
@@ -494,10 +539,18 @@ export function Groups() {
                       </span>
                       <span
                         className="truncate font-mono text-xs text-secondary"
-                        title={m}
+                        title={m.dn || m.name}
                       >
-                        {m}
+                        {m.name || m.dn}
                       </span>
+                      <button
+                        onClick={() => handleRemoveMember(m.dn)}
+                        disabled={actionLoading === "removeMember"}
+                        className="ml-auto flex-shrink-0 text-muted hover:text-red"
+                        title={t("groups:btn_remove_member")}
+                      >
+                        <UserMinus size={14} />
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -510,6 +563,27 @@ export function Groups() {
                   />
                 </div>
               )}
+              {/* Add member */}
+              <div className="flex gap-2 border-t border-border-subtle p-3">
+                <input
+                  className="input flex-1 text-sm"
+                  placeholder={t("groups:ph_member_dn")}
+                  value={addMemberDn}
+                  onChange={(e) => setAddMemberDn(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleAddMember(); }}
+                />
+                <button
+                  onClick={handleAddMember}
+                  disabled={!addMemberDn.trim() || actionLoading === "addMember"}
+                  className="btn-outline flex-shrink-0 px-3 disabled:opacity-50"
+                >
+                  {actionLoading === "addMember" ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <UserPlus size={16} />
+                  )}
+                </button>
+              </div>
             </DetailSection>
 
             {/* Danger zone */}

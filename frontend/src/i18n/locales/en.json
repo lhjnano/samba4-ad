@@ -252,7 +252,13 @@
     "toast_group_deleted": "Group has been deleted",
     "toast_delete_failed": "Failed to delete",
     "toast_group_created": "Group has been created",
-    "toast_group_create_failed": "Failed to create group"
+    "toast_group_create_failed": "Failed to create group",
+    "btn_remove_member": "Remove member",
+    "ph_member_dn": "CN=Username,CN=Users,DC=...",
+    "toast_member_added": "Member added",
+    "toast_member_add_failed": "Failed to add member",
+    "toast_member_removed": "Member removed",
+    "toast_member_remove_failed": "Failed to remove member"
   },
   "computers": {
     "title": "Computer Management",

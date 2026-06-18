@@ -252,7 +252,13 @@
     "toast_group_deleted": "그룹이 삭제되었습니다",
     "toast_delete_failed": "삭제에 실패했습니다",
     "toast_group_created": "그룹이 생성되었습니다",
-    "toast_group_create_failed": "그룹 생성에 실패했습니다"
+    "toast_group_create_failed": "그룹 생성에 실패했습니다",
+    "btn_remove_member": "멤버 제거",
+    "ph_member_dn": "CN=사용자명,CN=Users,DC=...",
+    "toast_member_added": "멤버가 추가되었습니다",
+    "toast_member_add_failed": "멤버 추가에 실패했습니다",
+    "toast_member_removed": "멤버가 제거되었습니다",
+    "toast_member_remove_failed": "멤버 제거에 실패했습니다"
   },
   "computers": {
     "title": "컴퓨터 관리",
