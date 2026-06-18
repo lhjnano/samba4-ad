@@ -101,7 +101,9 @@ def verify_credentials(username: str, password: str) -> dict[str, Any] | None:
 
     # LDAP mode — attempt a simple bind
     try:
-        from ldap3 import Connection, Server
+        import ssl
+
+        from ldap3 import Connection, Server, Tls
 
         # Extract sAMAccountName from various input formats
         sam = username.split("@")[0]
@@ -128,10 +130,17 @@ def verify_credentials(username: str, password: str) -> dict[str, Any] | None:
         else:
             bind_dn = username
 
+        # Samba AD requires TLS for simple binds; self-signed certs are
+        # auto-generated during domain provisioning.
+        tls_config = Tls(
+            validate=ssl.CERT_NONE,
+            version=ssl.PROTOCOL_TLS_CLIENT,
+        )
         server = Server(
             settings.ldap_host,
             port=settings.ldap_port,
             use_ssl=settings.ldap_use_ssl,
+            tls=tls_config,
             connect_timeout=10,
         )
         conn = Connection(
@@ -139,9 +148,14 @@ def verify_credentials(username: str, password: str) -> dict[str, Any] | None:
             user=bind_dn,
             password=password,
             authentication="SIMPLE",
-            auto_bind=True,
+            auto_bind=False,
             read_only=True,
         )
+        # StartTLS upgrade before bind
+        conn.open(read_server_info=False)
+        if not settings.ldap_use_ssl:
+            conn.start_tls(read_server_info=False)
+        conn.bind()
 
         if conn.bound:
             # Fetch user info

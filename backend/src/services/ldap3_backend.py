@@ -14,10 +14,11 @@ from __future__ import annotations
 
 import re
 import socket
+import ssl
 from datetime import UTC, datetime
 from typing import Any
 
-from ldap3 import ALL, SUBTREE, Connection, Server
+from ldap3 import ALL, SUBTREE, Connection, Server, Tls
 
 from src.core.config import Settings
 from src.models.common import decode_id, encode_id
@@ -165,10 +166,17 @@ class Ldap3Backend:
 
     def __init__(self, settings: Settings) -> None:
         self._cfg = settings
+        # Samba AD requires TLS for simple binds.  Self-signed certs are
+        # auto-generated during provisioning, so we disable validation.
+        self._tls = Tls(
+            validate=ssl.CERT_NONE,
+            version=ssl.PROTOCOL_TLS_CLIENT,
+        )
         self._server = Server(
             settings.ldap_host,
             port=settings.ldap_port,
             use_ssl=settings.ldap_use_ssl,
+            tls=self._tls,
             get_info=ALL,
             connect_timeout=settings.ldap_timeout,
         )
@@ -181,9 +189,15 @@ class Ldap3Backend:
             self._server,
             user=self._cfg.ldap_bind_dn,
             password=self._cfg.ldap_bind_password.get_secret_value(),
-            auto_bind=True,
+            auto_bind=False,
+            read_only=False,
             receive_timeout=self._cfg.ldap_timeout,
         )
+        # StartTLS upgrade before bind (Samba requires transport encryption)
+        conn.open(read_server_info=False)
+        if not self._cfg.ldap_use_ssl:
+            conn.start_tls(read_server_info=False)
+        conn.bind()
         return conn
 
     def _search(

@@ -14,22 +14,33 @@ git-excluded ``.env`` file (see ``.env.example``).
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Production config (written by install.sh): /etc/samba-ad-manager/env
+# Dev fallbacks: project-root .env and CWD .env
+_PRODUCTION_ENV = Path("/etc/samba-ad-manager/env")
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
 
 class Settings(BaseSettings):
     """Centralised application settings.
 
-    All fields default to mock/local values so the app boots with zero config
-    for development. Production values are injected via environment variables
-    or a ``.env`` file.
+    Config file lookup order (first match wins):
+    1. ``/etc/samba-ad-manager/env`` — production, written by install.sh
+    2. ``<project-root>/.env`` — development
+    3. ``./.env`` — fallback
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(
+            str(_PRODUCTION_ENV),
+            str(_PROJECT_ROOT / ".env"),
+            ".env",
+        ),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
