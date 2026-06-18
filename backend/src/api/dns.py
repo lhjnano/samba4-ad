@@ -9,7 +9,6 @@ In mock mode, returns a minimal built-in zone set.
 from __future__ import annotations
 
 import re
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -17,7 +16,7 @@ from pydantic import BaseModel, Field
 from src.core.config import settings
 from src.core.deps import get_directory
 from src.services.directory import DirectoryBackend
-from src.services.samba_tool import SambaTool
+from src.services.samba_tool import ToolResult
 
 router = APIRouter(prefix="/dns", tags=["dns"])
 
@@ -52,16 +51,31 @@ class DNSRecordDelete(BaseModel):
 
 
 # ── samba-tool dns helpers ────────────────────────────────────────────
+# NOTE: samba-tool dns uses a positional <server> argument, not -H.
+# It also doesn't support --use-kerberos=off. We build commands directly.
 
 
-def _dns_tool() -> SambaTool:  # pragma: no cover
-    return SambaTool(settings)
+def _dns_cmd(*parts: str) -> list[str]:
+    """Build a samba-tool dns command with credentials."""
+    dn = settings.ldap_bind_dn
+    username = dn.split(",")[0].split("=", 1)[1] if dn.upper().startswith("CN=") else dn
+    password = settings.ldap_bind_password.get_secret_value()
+    return [
+        settings.samba_tool_path,
+        "dns",
+        *parts,
+        "-U",
+        f"{username}%{password}",
+    ]
 
 
-def _run_dns(*parts: str) -> Any:  # pragma: no cover
-    tool = _dns_tool()
-    res = tool._run(tool._base_cmd("dns", *parts))
-    return res
+def _run_dns(*parts: str) -> ToolResult:  # pragma: no cover
+    """Execute a samba-tool dns command."""
+    import subprocess
+
+    cmd = _dns_cmd(*parts)
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60, check=False)
+    return ToolResult(proc.returncode, proc.stdout, proc.stderr)
 
 
 def _parse_zones(stdout: str) -> list[DNSZone]:  # pragma: no cover
