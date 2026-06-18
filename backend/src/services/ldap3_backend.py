@@ -19,7 +19,16 @@ import ssl
 from datetime import UTC, datetime
 from typing import Any
 
-from ldap3 import ALL, SUBTREE, Connection, Server, Tls
+from ldap3 import (
+    ALL,
+    MODIFY_ADD,
+    MODIFY_DELETE,
+    MODIFY_REPLACE,
+    SUBTREE,
+    Connection,
+    Server,
+    Tls,
+)
 
 from src.core.config import Settings
 from src.models.common import decode_id, encode_id
@@ -68,7 +77,10 @@ from src.models.users import (
 )
 from src.services.directory import (
     DirectoryBackend,
+    EntryExistsError,
     EntryNotFoundError,
+    InsufficientRightsError,
+    OperationFailedError,
 )
 
 
@@ -230,6 +242,44 @@ class Ldap3Backend:
             out.append(attrs)
         return out
 
+    def _check_result(self, conn: Connection, context: str = "") -> None:
+        """Check the last LDAP operation result and raise on failure.
+
+        Maps LDAP result codes to DirectoryError subclasses so routes
+        can translate them to proper HTTP status codes.
+        """
+        result = conn.result
+        if not result:
+            return
+        code = result.get("result", 0)
+        if code == 0:  # success
+            return
+        desc = result.get("description", "Unknown LDAP error")
+        msg = f"{context}: {desc}" if context else desc
+
+        # LDAP error code → exception mapping
+        if code in (32, 16):  # noSuchObject, noSuchAttribute
+            raise EntryNotFoundError(msg)
+        if code == 68:  # entryAlreadyExists
+            raise EntryExistsError(msg)
+        if code == 50:  # insufficientAccessRights
+            raise InsufficientRightsError(msg)
+        raise OperationFailedError(msg)
+
+    def _check_tool(self, res, context: str = "") -> None:
+        """Check a samba-tool result and raise on failure."""
+        if res.ok:
+            return
+        err = (res.stderr or res.stdout or "Unknown error").strip()
+        msg = f"{context}: {err}" if context else err
+        if "already exists" in err.lower():
+            raise EntryExistsError(msg)
+        if "not found" in err.lower() or "does not exist" in err.lower():
+            raise EntryNotFoundError(msg)
+        if "insufficient" in err.lower() or "access denied" in err.lower():
+            raise InsufficientRightsError(msg)
+        raise OperationFailedError(msg)
+
     def _base(self) -> str:
         return self._cfg.ldap_search_base or "DC=TEST,DC=LOCAL"
 
@@ -353,12 +403,11 @@ class Ldap3Backend:
             ou_dn=payload.ou_dn,
         )
         if not res.ok:
-            raise RuntimeError(res.stderr or res.stdout)
+            self._check_tool(res)
         dn = f"CN={payload.username},{payload.ou_dn or f'CN=Users,{self._base()}'}"
         return self.get_user(encode_id(dn))
 
     def update_user(self, item_id: str, **fields: object) -> UserDetail:
-        from ldap3 import MODIFY_REPLACE
 
         dn = decode_id(item_id)
         changes: dict[str, tuple] = {}
@@ -371,6 +420,7 @@ class Ldap3Backend:
         with self._connect() as conn:
             if changes:
                 conn.modify(dn, changes)
+                self._check_result(conn)
             if fields.get("ou_dn"):
                 conn.modify_dn(
                     dn,
@@ -399,7 +449,7 @@ class Ldap3Backend:
         tool = SambaTool(self._cfg)
         res = tool.user_setpassword(username, new_password)
         if not res.ok:
-            raise RuntimeError(res.stderr)
+            self._check_tool(res)
 
     def delete_user(self, item_id: str) -> None:
         from src.services.samba_tool import SambaTool
@@ -409,7 +459,7 @@ class Ldap3Backend:
         tool = SambaTool(self._cfg)
         res = tool.user_delete(username)
         if not res.ok:
-            raise RuntimeError(res.stderr)
+            self._check_tool(res)
 
     def user_stats(self) -> UserStats:
         # Count via LDAP — exact numbers computed from real directory.
@@ -553,7 +603,7 @@ class Ldap3Backend:
         tool = SambaTool(self._cfg)
         res = tool.group_add(payload.name, ou_dn=payload.ou_dn)
         if not res.ok:
-            raise RuntimeError(res.stderr or res.stdout)
+            self._check_tool(res)
         # samba-tool uses CN=...; locate the new group and return detail
         with self._connect() as conn:
             conn.search(
@@ -566,7 +616,6 @@ class Ldap3Backend:
         raise EntryNotFoundError(f"Created group not locatable: {payload.name}")
 
     def update_group(self, item_id: str, **fields: object) -> GroupDetail:
-        from ldap3 import MODIFY_REPLACE
 
         dn = decode_id(item_id)
         changes: dict[str, tuple] = {}
@@ -577,22 +626,23 @@ class Ldap3Backend:
         with self._connect() as conn:
             if changes:
                 conn.modify(dn, changes)
+                self._check_result(conn)
         return self.get_group(item_id)
 
     def add_group_members(self, item_id: str, member_dns: list[str]) -> GroupDetail:
-        from ldap3 import MODIFY_ADD
 
         dn = decode_id(item_id)
         with self._connect() as conn:
             conn.modify(dn, {"member": (MODIFY_ADD, member_dns)})
+            self._check_result(conn)
         return self.get_group(item_id)
 
     def remove_group_member(self, item_id: str, member_dn: str) -> GroupDetail:
-        from ldap3 import MODIFY_DELETE
 
         dn = decode_id(item_id)
         with self._connect() as conn:
             conn.modify(dn, {"member": (MODIFY_DELETE, [member_dn])})
+            self._check_result(conn)
         return self.get_group(item_id)
 
     def delete_group(self, item_id: str) -> None:
@@ -603,7 +653,7 @@ class Ldap3Backend:
         tool = SambaTool(self._cfg)
         res = tool.group_delete(name)
         if not res.ok:
-            raise RuntimeError(res.stderr)
+            self._check_tool(res)
 
     def group_stats(self) -> GroupStats:
         with self._connect() as conn:
@@ -775,6 +825,7 @@ class Ldap3Backend:
                     ),
                 },
             )
+            self._check_result(conn)
         return OuTreeNode(
             id=encode_id(dn),
             name=rdn,
@@ -786,7 +837,6 @@ class Ldap3Backend:
         )
 
     def update_ou(self, item_id: str, **fields: object) -> OuDetail:
-        from ldap3 import MODIFY_REPLACE
 
         dn = decode_id(item_id)
         changes: dict[str, tuple] = {}
@@ -799,12 +849,14 @@ class Ldap3Backend:
         with self._connect() as conn:
             if changes:
                 conn.modify(dn, changes)
+                self._check_result(conn)
         return self.get_ou(item_id)
 
     def delete_ou(self, item_id: str) -> None:
         dn = decode_id(item_id)
         with self._connect() as conn:
             conn.delete(dn)
+            self._check_result(conn)
 
     def ou_stats(self) -> OuStats:
         with self._connect() as conn:
@@ -934,7 +986,6 @@ class Ldap3Backend:
         )
 
     def set_computer_status(self, item_id: str, status: str) -> ComputerDetail:
-        from ldap3 import MODIFY_REPLACE
 
         dn = decode_id(item_id)
         # Read current UAC, flip the disable bit
@@ -950,16 +1001,17 @@ class Ldap3Backend:
             uac &= ~int(UserAccountControl.ACCOUNTDISABLE)
         with self._connect() as conn:
             conn.modify(dn, {"userAccountControl": (MODIFY_REPLACE, [str(uac)])})
+            self._check_result(conn)
         return self.get_computer(item_id)
 
     def reset_computer(self, item_id: str) -> None:
         dn = decode_id(item_id)
         # Reset computer account: set UAC back to default workstation trust
-        from ldap3 import MODIFY_REPLACE
 
         uac = int(UserAccountControl.WORKSTATION_TRUST_ACCOUNT)
         with self._connect() as conn:
             conn.modify(dn, {"userAccountControl": (MODIFY_REPLACE, [str(uac)])})
+            self._check_result(conn)
 
     def delete_computer(self, item_id: str) -> None:
         from src.services.samba_tool import SambaTool
@@ -969,7 +1021,7 @@ class Ldap3Backend:
         tool = SambaTool(self._cfg)
         res = tool._run(tool._base_cmd("computer", "delete", name))
         if not res.ok:
-            raise RuntimeError(res.stderr)
+            self._check_tool(res)
 
     def computer_stats(self) -> ComputerStats:
         with self._connect() as conn:
@@ -1160,7 +1212,7 @@ class Ldap3Backend:
         tool = SambaTool(self._cfg)
         res = tool.gpo_create(display_name)
         if not res.ok:
-            raise RuntimeError(res.stderr or res.stdout)
+            self._check_tool(res)
         # Locate the created GPO by display name
         with self._connect() as conn:
             conn.search(
@@ -1176,7 +1228,6 @@ class Ldap3Backend:
         raise EntryNotFoundError(f"Created GPO not locatable: {display_name}")
 
     def link_gpo(self, gpo_id: str, ou_dn: str, enforced: bool) -> GpoDetail:
-        from ldap3 import MODIFY_REPLACE
 
         gpo_dn = decode_id(gpo_id)
         # Build/extend the gPLink attribute: [LDAP://<dn>;<flags>;]
@@ -1195,10 +1246,10 @@ class Ldap3Backend:
             )
             new_link = cleaned + new_entry
             conn.modify(ou_dn, {"gPLink": (MODIFY_REPLACE, [new_link])})
+            self._check_result(conn)
         return self.get_gpo(gpo_id)
 
     def unlink_gpo(self, gpo_id: str, ou_dn: str) -> GpoDetail:
-        from ldap3 import MODIFY_REPLACE
 
         gpo_dn = decode_id(gpo_id)
         with self._connect() as conn:
@@ -1212,10 +1263,10 @@ class Ldap3Backend:
                 r"\[LDAP://" + re.escape(gpo_dn) + r";[0-2]\]", "", existing
             )
             conn.modify(ou_dn, {"gPLink": (MODIFY_REPLACE, [new_link])})
+            self._check_result(conn)
         return self.get_gpo(gpo_id)
 
     def set_gpo_status(self, gpo_id: str, status: str) -> GpoDetail:
-        from ldap3 import MODIFY_REPLACE
 
         dn = decode_id(gpo_id)
         want = GpoStatus(status)
@@ -1223,6 +1274,7 @@ class Ldap3Backend:
         flags = 3 if want == GpoStatus.DISABLED else 0
         with self._connect() as conn:
             conn.modify(dn, {"flags": (MODIFY_REPLACE, [str(flags)])})
+            self._check_result(conn)
         return self.get_gpo(gpo_id)
 
     def delete_gpo(self, item_id: str) -> None:
@@ -1233,7 +1285,7 @@ class Ldap3Backend:
         tool = SambaTool(self._cfg)
         res = tool.gpo_delete(guid)
         if not res.ok:
-            raise RuntimeError(res.stderr)
+            self._check_tool(res)
 
     def gpo_stats(self) -> GpoStats:
         items, total = self.list_gpos(page=1, limit=10000)

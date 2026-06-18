@@ -68,8 +68,24 @@ class SambaTool:
         return ToolResult(proc.returncode, proc.stdout, proc.stderr)
 
     def _base_cmd(self, *parts: str) -> list[str]:
+        """Build a samba-tool command with LDAP connection params.
+
+        When APP_MODE=ldap, samba-tool connects via LDAP to the running
+        DC (not local files), so it doesn't need root access to
+        /var/lib/samba/private/sam.ldb.
+        """
         cmd = [self._cfg.samba_tool_path, *parts]
-        if self._cfg.samba_config:
+        if self._cfg.app_mode == "ldap":
+            cmd.extend(
+                [
+                    "-H",
+                    f"ldap://{self._cfg.ldap_host}",
+                    "-U",
+                    f"{self._cfg.ldap_bind_dn}%{self._cfg.ldap_bind_password.get_secret_value()}",
+                    "--use-kerberos=off",
+                ]
+            )
+        elif self._cfg.samba_config:
             cmd.extend(["--configfile", self._cfg.samba_config])
         return cmd
 
