@@ -34,6 +34,7 @@ def _err(e: DirectoryError) -> HTTPException:
 @router.get("", response_model=Page[GroupSummary])
 def list_groups(
     q: str | None = Query(None),
+    search: str | None = Query(None, description="Search (alias for q)"),
     category: str | None = Query(None, description="security|distribution"),
     scope: str | None = Query(None, description="domain|global|universal"),
     page: int = Query(1, ge=1),
@@ -41,7 +42,7 @@ def list_groups(
     directory: DirectoryBackend = Depends(get_directory),
 ) -> Page[GroupSummary]:
     items, total = directory.list_groups(
-        q=q, category=category, scope=scope, page=page, limit=page_size
+        q=search or q, category=category, scope=scope, page=page, limit=page_size
     )
     return Page.of(items, total, page, page_size)
 

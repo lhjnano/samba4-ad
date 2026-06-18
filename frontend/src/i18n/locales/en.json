@@ -212,6 +212,7 @@
     "label_scope": "Scope",
     "label_ou": "Organizational Unit",
     "label_created": "Created",
+    "label_managed_by": "Managed By",
     "badge_members_count": "{{count}} members",
     "section_members": "Members ({{count}})",
     "empty_no_members_title": "No members",

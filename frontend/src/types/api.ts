@@ -93,16 +93,13 @@ export interface ServicesStatus {
 export interface ADUser {
   id: string;
   username: string;
-  display_name: string;
-  email: string;
-  department: string;
-  title: string;
+  display_name: string | null;
+  email: string | null;
+  ou: string;
+  status: string;
   enabled: boolean;
   locked: boolean;
-  ou: string;
   last_logon: string | null;
-  created_at: string;
-  member_of: string[];
 }
 
 export interface Paginated<T> {
@@ -117,23 +114,25 @@ export interface Paginated<T> {
 export interface ADGroup {
   id: string;
   name: string;
-  description: string;
-  group_type: string;
+  category: string;
   scope: string;
   member_count: number;
-  ou: string;
-  created_at: string;
+  description: string;
+  managed_by: string | null;
 }
 
 // ── Computers ──────────────────────────────────────
 export interface ADComputer {
   id: string;
   hostname: string;
-  os: string;
-  ou: string;
-  enabled: boolean;
-  last_logon: string | null;
+  dns_hostname: string | null;
+  operating_system: string;
+  operating_system_version: string | null;
   ip_address: string | null;
+  ou: string;
+  status: string;
+  last_logon: string | null;
+  join_date: string | null;
 }
 
 // ── OUs ────────────────────────────────────────────
@@ -151,15 +150,25 @@ export interface ADOU {
 // ── GPOs ───────────────────────────────────────────
 export interface GPO {
   id: string;
-  name: string;
-  dn: string;
+  display_name: string;
+  status: string;
   description: string;
-  status: "enabled" | "disabled" | "all_settings_disabled";
-  links: string[];
-  created: string;
-  modified: string;
-  computer_version: number;
-  user_version: number;
+  link_count: number;
+}
+
+export interface GPODetail {
+  id: string;
+  guid: string;
+  display_name: string;
+  dn: string;
+  status: string;
+  description: string | null;
+  when_created: string | null;
+  when_changed: string | null;
+  version_user: number;
+  version_computer: number;
+  wmi_filter: string | null;
+  linked_ous: { gpo_id: string; ou_dn: string; enabled: boolean; enforced: boolean }[];
 }
 
 // ── Domain Policy ──────────────────────────────────

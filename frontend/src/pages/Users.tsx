@@ -1,19 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   UserPlus,
   Search,
   Mail,
-  Building2,
   Key,
   Trash2,
-  UserCog,
   Download,
   Power,
   ShieldAlert,
   Clock,
   FolderTree,
-  ChevronDown,
   Loader2,
   AlertCircle,
   CheckCircle2,
@@ -36,8 +33,6 @@ interface CreateForm {
   username: string;
   display_name: string;
   email: string;
-  department: string;
-  title: string;
   password: string;
   ou: string;
   groups: string;
@@ -47,8 +42,6 @@ const EMPTY_FORM: CreateForm = {
   username: "",
   display_name: "",
   email: "",
-  department: "",
-  title: "",
   password: "",
   ou: "",
   groups: "",
@@ -72,7 +65,8 @@ function formatDate(iso: string | null | undefined): string {
   });
 }
 
-function getInitials(name: string): string {
+function getInitials(name: string | null | undefined): string {
+  if (!name) return "?";
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "?";
   return parts
@@ -123,7 +117,6 @@ export function Users() {
   // Filters
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [department, setDepartment] = useState("");
 
   // Detail drawer
   const [detailOpen, setDetailOpen] = useState(false);
@@ -185,20 +178,6 @@ export function Users() {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
-
-  // ── Departments (derived) ────────────────────────
-  const departments = useMemo(() => {
-    const set = new Set<string>();
-    users.forEach((u) => {
-      if (u.department) set.add(u.department);
-    });
-    return Array.from(set).sort();
-  }, [users]);
-
-  const visibleUsers = useMemo(
-    () => (department ? users.filter((u) => u.department === department) : users),
-    [users, department],
-  );
 
   // ── Auto-dismiss toast ───────────────────────────
   useEffect(() => {
@@ -357,8 +336,6 @@ export function Users() {
         display_name: form.display_name.trim(),
         email: form.email.trim(),
         password: form.password,
-        department: form.department.trim() || undefined,
-        title: form.title.trim() || undefined,
         ou: form.ou.trim() || undefined,
       };
       const { data: created } = await api.post<ADUser>(
@@ -366,24 +343,9 @@ export function Users() {
         body,
       );
 
-      // Best-effort group assignment via partial update
-      const groups = parseGroups(form.groups);
-      let groupsFailed = false;
-      if (groups.length) {
-        try {
-          await api.patch(`${API_BASE}/users/${created.id}`, {
-            member_of: groups,
-          });
-        } catch {
-          groupsFailed = true;
-        }
-      }
-
       setToast({
-        type: groupsFailed ? "error" : "success",
-        message: groupsFailed
-          ? t("users:toast_user_created_groups_failed")
-          : t("users:toast_user_created"),
+        type: "success",
+        message: t("users:toast_user_created"),
       });
       setCreateOpen(false);
       setForm(EMPTY_FORM);
@@ -412,20 +374,6 @@ export function Users() {
           </span>
           <span className="font-mono text-xs text-muted">{u.username}</span>
         </div>
-      ),
-    },
-    {
-      key: "department",
-      header: t("users:th_department"),
-      render: (u: ADUser) => (
-        <span className="text-secondary">{u.department || "—"}</span>
-      ),
-    },
-    {
-      key: "title",
-      header: t("users:th_title"),
-      render: (u: ADUser) => (
-        <span className="text-secondary">{u.title || "—"}</span>
       ),
     },
     {
@@ -477,29 +425,6 @@ export function Users() {
           />
         </div>
 
-        <div className="relative">
-          <Building2
-            size={16}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
-          />
-          <select
-            className="input cursor-pointer appearance-none pl-9 pr-9"
-            value={department}
-            onChange={(e) => setDepartment(e.target.value)}
-          >
-            <option value="">{t("users:filter_all_departments")}</option>
-            {departments.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-          <ChevronDown
-            size={16}
-            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted"
-          />
-        </div>
-
         <div className="flex gap-2">
           <button className="btn-outline" onClick={handleExport}>
             <Download size={16} /> {t("users:btn_export")}
@@ -528,7 +453,7 @@ export function Users() {
       <div className="card">
         <DataTable
           columns={columns}
-          data={visibleUsers}
+          data={users}
           loading={loading}
           emptyMessage={t("users:empty_no_users")}
           onRowClick={openDetail}
@@ -585,12 +510,6 @@ export function Users() {
             <DetailSection title={t("users:section_basic_info")}>
               <InfoRow icon={Mail} label={t("users:label_email")} value={selectedUser.email} />
               <InfoRow
-                icon={Building2}
-                label={t("users:label_department")}
-                value={selectedUser.department}
-              />
-              <InfoRow icon={UserCog} label={t("users:label_title")} value={selectedUser.title} />
-              <InfoRow
                 icon={FolderTree}
                 label={t("users:label_ou")}
                 value={selectedUser.ou}
@@ -598,37 +517,9 @@ export function Users() {
               />
               <InfoRow
                 icon={Clock}
-                label={t("users:label_created")}
-                value={formatDate(selectedUser.created_at)}
-              />
-              <InfoRow
-                icon={Clock}
                 label={t("users:label_last_logon")}
                 value={formatDate(selectedUser.last_logon)}
               />
-            </DetailSection>
-
-            {/* Groups */}
-            <DetailSection
-              title={t("users:section_group_membership", {
-                count: selectedUser.member_of?.length ?? 0,
-              })}
-            >
-              {selectedUser.member_of?.length ? (
-                <div className="flex flex-wrap gap-1.5 p-4">
-                  {selectedUser.member_of.map((g) => (
-                    <span
-                      key={g}
-                      className="badge bg-blue/10 text-blue"
-                      title={g}
-                    >
-                      {g}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="p-4 text-xs text-muted">{t("users:empty_no_groups")}</p>
-              )}
             </DetailSection>
 
             {/* Management actions */}
@@ -787,27 +678,6 @@ export function Users() {
               autoComplete="off"
             />
           </Field>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Field label={t("users:label_department_form")}>
-              <input
-                className="input"
-                value={form.department}
-                onChange={(e) => setField("department", e.target.value)}
-                placeholder={t("users:ph_department")}
-                autoComplete="off"
-              />
-            </Field>
-            <Field label={t("users:label_title_form")}>
-              <input
-                className="input"
-                value={form.title}
-                onChange={(e) => setField("title", e.target.value)}
-                placeholder={t("users:ph_title")}
-                autoComplete="off"
-              />
-            </Field>
-          </div>
 
           <Field
             label={t("users:label_password")}

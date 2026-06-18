@@ -212,6 +212,7 @@
     "label_scope": "범위",
     "label_ou": "조직 단위",
     "label_created": "생성일",
+    "label_managed_by": "관리자",
     "badge_members_count": "{{count}}명",
     "section_members": "구성원 ({{count}})",
     "empty_no_members_title": "구성원 없음",

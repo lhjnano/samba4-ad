@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { api } from "@/api/client";
-import type { GPO, Paginated } from "@/types/api";
+import type { GPO, GPODetail, Paginated } from "@/types/api";
 import { DataTable } from "@/components/ui/DataTable";
 import { Drawer } from "@/components/ui/Drawer";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -31,12 +31,12 @@ const PAGE_SIZE = 20;
 const API_BASE = "/api/v1";
 
 interface CreateForm {
-  name: string;
+  display_name: string;
   description: string;
 }
 
 const EMPTY_FORM: CreateForm = {
-  name: "",
+  display_name: "",
   description: "",
 };
 
@@ -74,7 +74,7 @@ export function GPOs() {
 
   // Detail drawer
   const [detailOpen, setDetailOpen] = useState(false);
-  const [selectedGPO, setSelectedGPO] = useState<GPO | null>(null);
+  const [selectedGPO, setSelectedGPO] = useState<GPODetail | null>(null);
 
   // Detail actions
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -151,10 +151,27 @@ export function GPOs() {
   }, [toast]);
 
   // ── Detail ───────────────────────────────────────
-  function openDetail(gpo: GPO) {
-    setSelectedGPO(gpo);
+  async function openDetail(gpo: GPO) {
     setDetailOpen(true);
     setShowDeleteConfirm(false);
+    setSelectedGPO(null);
+    try {
+      const { data } = await api.get<GPODetail>(`${API_BASE}/gpo/${gpo.id}`);
+      setSelectedGPO(data);
+    } catch {
+      // Fallback: convert summary to minimal detail
+      setSelectedGPO({
+        ...gpo,
+        guid: gpo.id,
+        dn: "",
+        when_created: null,
+        when_changed: null,
+        version_user: 0,
+        version_computer: 0,
+        wmi_filter: null,
+        linked_ous: [],
+      });
+    }
   }
 
   function closeDetail() {
@@ -196,14 +213,14 @@ export function GPOs() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!form.name.trim()) errs.name = t("gpos:validation_name_required");
+    if (!form.display_name.trim()) errs.display_name = t("gpos:validation_name_required");
     setFormErrors(errs);
     if (Object.keys(errs).length) return;
 
     setSubmitting(true);
     try {
       const body = {
-        name: form.name.trim(),
+        display_name: form.display_name.trim(),
         description: form.description.trim() || undefined,
       };
       await api.post<GPO>(`${API_BASE}/gpo`, body);
@@ -234,7 +251,7 @@ export function GPOs() {
           <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-blue/15 text-blue">
             <ShieldAlert size={14} />
           </span>
-          <span className="font-medium text-primary">{g.name || "—"}</span>
+          <span className="font-medium text-primary">{g.display_name || "—"}</span>
         </div>
       ),
     },
@@ -263,7 +280,7 @@ export function GPOs() {
       header: t("gpos:th_links"),
       render: (g: GPO) => (
         <span className="font-mono text-primary">
-          {g.links?.length ?? 0}
+          {g.link_count ?? 0}
         </span>
       ),
     },
@@ -271,7 +288,7 @@ export function GPOs() {
       key: "modified",
       header: t("gpos:th_modified"),
       render: (g: GPO) => (
-        <span className="text-muted">{formatDate(g.modified)}</span>
+        <span className="text-muted">{g.status}</span>
       ),
     },
   ];
@@ -369,13 +386,13 @@ export function GPOs() {
               </div>
               <div className="min-w-0">
                 <h3 className="truncate text-lg font-semibold text-primary">
-                  {selectedGPO.name || "—"}
+                  {selectedGPO.display_name || "—"}
                 </h3>
                 <p
                   className="truncate font-mono text-sm text-muted"
-                  title={selectedGPO.dn ?? undefined}
+                  title={selectedGPO.guid ?? undefined}
                 >
-                  {selectedGPO.dn || "—"}
+                  {selectedGPO.guid || "—"}
                 </p>
                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                   {(() => {
@@ -383,7 +400,7 @@ export function GPOs() {
                     return <StatusBadge status={s.status} label={s.label} />;
                   })()}
                   <span className="badge bg-blue/10 text-blue">
-                    {t("gpos:badge_links_count", { count: selectedGPO.links?.length ?? 0 })}
+                    {t("gpos:badge_links_count", { count: selectedGPO.linked_ous?.length ?? 0 })}
                   </span>
                 </div>
               </div>
@@ -394,7 +411,7 @@ export function GPOs() {
               <InfoRow
                 icon={ShieldAlert}
                 label={t("gpos:label_policy_name")}
-                value={selectedGPO.name}
+                value={selectedGPO.display_name}
               />
               <InfoRow
                 icon={Info}
@@ -404,18 +421,18 @@ export function GPOs() {
               <InfoRow
                 icon={Network}
                 label={t("gpos:label_dn")}
-                value={selectedGPO.dn}
+                value={selectedGPO.guid}
                 mono
               />
               <InfoRow
                 icon={RefreshCw}
                 label={t("gpos:label_created")}
-                value={formatDate(selectedGPO.created)}
+                value={formatDate(selectedGPO.when_created)}
               />
               <InfoRow
                 icon={RefreshCw}
                 label={t("gpos:label_modified")}
-                value={formatDate(selectedGPO.modified)}
+                value={formatDate(selectedGPO.when_changed)}
               />
             </DetailSection>
 
@@ -428,7 +445,7 @@ export function GPOs() {
                   </span>
                   <span className="text-xs text-secondary">{t("gpos:label_computer_config")}</span>
                   <span className="font-mono text-lg font-semibold text-primary">
-                    {selectedGPO.computer_version ?? 0}
+                    {selectedGPO.version_computer ?? 0}
                   </span>
                 </div>
                 <div className="flex flex-col items-center gap-1 px-4 py-4">
@@ -437,7 +454,7 @@ export function GPOs() {
                   </span>
                   <span className="text-xs text-secondary">{t("gpos:label_user_config")}</span>
                   <span className="font-mono text-lg font-semibold text-primary">
-                    {selectedGPO.user_version ?? 0}
+                    {selectedGPO.version_user ?? 0}
                   </span>
                 </div>
               </div>
@@ -445,11 +462,11 @@ export function GPOs() {
 
             {/* Linked OUs */}
             <DetailSection
-              title={t("gpos:section_linked_ous", { count: selectedGPO.links?.length ?? 0 })}
+              title={t("gpos:section_linked_ous", { count: selectedGPO.linked_ous?.length ?? 0 })}
             >
-              {selectedGPO.links?.length ? (
+              {selectedGPO.linked_ous?.length ? (
                 <div className="max-h-64 overflow-y-auto">
-                  {selectedGPO.links.map((l, i) => (
+                  {selectedGPO.linked_ous.map((l, i) => (
                     <div
                       key={i}
                       className="flex items-center gap-2 border-b border-border-subtle px-4 py-2.5 last:border-0"
@@ -459,9 +476,9 @@ export function GPOs() {
                       </span>
                       <span
                         className="truncate font-mono text-xs text-secondary"
-                        title={l}
+                        title={l.ou_dn}
                       >
-                        {l}
+                        {l.ou_dn}
                       </span>
                     </div>
                   ))}
@@ -495,7 +512,7 @@ export function GPOs() {
                         className="mt-0.5 flex-shrink-0"
                       />
                       <p>
-                        {t("gpos:confirm_delete_gpo", { name: selectedGPO.name })}
+                        {t("gpos:confirm_delete_gpo", { name: selectedGPO.display_name })}
                       </p>
                     </div>
                     <div className="mt-2 flex gap-2">
@@ -534,11 +551,11 @@ export function GPOs() {
         width="lg"
       >
         <form onSubmit={handleCreate} className="space-y-5">
-          <Field label={t("gpos:label_name_required")} error={formErrors.name}>
+          <Field label={t("gpos:label_name_required")} error={formErrors.display_name}>
             <input
               className="input font-mono"
-              value={form.name}
-              onChange={(e) => setField("name", e.target.value)}
+              value={form.display_name}
+              onChange={(e) => setField("display_name", e.target.value)}
               placeholder={t("gpos:ph_name")}
               autoComplete="off"
             />

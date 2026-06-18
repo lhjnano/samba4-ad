@@ -47,6 +47,7 @@ def list_users(
     q: str | None = Query(
         None, description="Search by username, display name, or email"
     ),
+    search: str | None = Query(None, description="Search (alias for q)"),
     ou: str | None = Query(None, description="Filter by OU (e.g. Dev Team)"),
     status_filter: str | None = Query(
         None, alias="status", description="active|inactive|locked"
@@ -58,7 +59,7 @@ def list_users(
     directory: DirectoryBackend = Depends(get_directory),
 ) -> Page[UserSummary]:
     items, total = directory.list_users(
-        q=q,
+        q=search or q,
         ou=ou,
         status=status_filter,
         page=page,

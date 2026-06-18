@@ -29,6 +29,7 @@ router = APIRouter(prefix="/computers", tags=["computers"])
 @router.get("", response_model=Page[ComputerSummary])
 def list_computers(
     q: str | None = Query(None, description="Search by hostname or IP"),
+    search: str | None = Query(None, description="Search (alias for q)"),
     os_filter: str | None = Query(
         None, alias="os", description="Filter by operating system"
     ),
@@ -40,7 +41,7 @@ def list_computers(
     directory: DirectoryBackend = Depends(get_directory),
 ) -> Page[ComputerSummary]:
     items, total = directory.list_computers(
-        q=q,
+        q=search or q,
         os_filter=os_filter,
         status=status_filter,
         page=page,

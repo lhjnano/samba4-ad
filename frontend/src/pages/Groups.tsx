@@ -37,7 +37,7 @@ const SCOPES = ["Domain Local", "Global", "Universal"] as const;
 interface CreateForm {
   name: string;
   description: string;
-  group_type: string;
+  category: string;
   scope: string;
   ou: string;
 }
@@ -45,7 +45,7 @@ interface CreateForm {
 const EMPTY_FORM: CreateForm = {
   name: "",
   description: "",
-  group_type: "Security",
+  category: "Security",
   scope: "Global",
   ou: "",
 };
@@ -239,7 +239,7 @@ export function Groups() {
       const body = {
         name: form.name.trim(),
         description: form.description.trim() || undefined,
-        group_type: form.group_type,
+        category: form.category,
         scope: form.scope,
         ou: form.ou.trim() || undefined,
       };
@@ -289,18 +289,18 @@ export function Groups() {
       ),
     },
     {
-      key: "group_type",
+      key: "category",
       header: t("groups:th_type"),
       render: (g: ADGroup) => (
         <span
           className={clsx(
             "badge",
-            normalize(g.group_type).includes("secur")
+            normalize(g.category).includes("secur")
               ? "bg-blue/10 text-blue"
               : "bg-purple/10 text-purple",
           )}
         >
-          {groupTypeLabel(g.group_type, t)}
+          {groupTypeLabel(g.category, t)}
         </span>
       ),
     },
@@ -320,13 +320,6 @@ export function Groups() {
         <span className="font-mono text-primary">
           {g.member_count?.toLocaleString() ?? 0}
         </span>
-      ),
-    },
-    {
-      key: "ou",
-      header: t("groups:th_ou"),
-      render: (g: ADGroup) => (
-        <span className="font-mono text-xs text-muted">{g.ou || "—"}</span>
       ),
     },
   ];
@@ -430,12 +423,12 @@ export function Groups() {
                   <span
                     className={clsx(
                       "badge",
-                      normalize(selectedGroup.group_type).includes("secur")
+                      normalize(selectedGroup.category).includes("secur")
                         ? "bg-blue/10 text-blue"
                         : "bg-purple/10 text-purple",
                     )}
                   >
-                    {groupTypeLabel(selectedGroup.group_type, t)}
+                    {groupTypeLabel(selectedGroup.category, t)}
                   </span>
                   <span className="badge bg-muted/15 text-secondary">
                     {scopeLabel(selectedGroup.scope, t)}
@@ -465,7 +458,7 @@ export function Groups() {
               <InfoRow
                 icon={ShieldAlert}
                 label={t("groups:label_type")}
-                value={groupTypeLabel(selectedGroup.group_type, t)}
+                value={groupTypeLabel(selectedGroup.category, t)}
               />
               <InfoRow
                 icon={Layers}
@@ -473,15 +466,10 @@ export function Groups() {
                 value={scopeLabel(selectedGroup.scope, t)}
               />
               <InfoRow
-                icon={FolderTree}
-                label={t("groups:label_ou")}
-                value={selectedGroup.ou}
+                icon={Users}
+                label={t("groups:label_managed_by")}
+                value={selectedGroup.managed_by}
                 mono
-              />
-              <InfoRow
-                icon={Clock}
-                label={t("groups:label_created")}
-                value={formatDate(selectedGroup.created_at)}
               />
             </DetailSection>
 
@@ -606,8 +594,8 @@ export function Groups() {
           <div className="grid grid-cols-2 gap-4">
             <Field label={t("groups:label_type_form")}>
               <SelectInput
-                value={form.group_type}
-                onChange={(v) => setField("group_type", v)}
+                value={form.category}
+                onChange={(v) => setField("category", v)}
               >
                 {GROUP_TYPES.map((gt) => (
                   <option key={gt} value={gt}>

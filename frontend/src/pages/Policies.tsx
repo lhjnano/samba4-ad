@@ -98,7 +98,7 @@ export function Policies() {
     e.preventDefault();
     setSaving(true);
     try {
-      const { data } = await api.put<DomainPolicy>(
+      const { data } = await api.patch<DomainPolicy>(
         `${API_BASE}/policies/domain`,
         policy,
       );

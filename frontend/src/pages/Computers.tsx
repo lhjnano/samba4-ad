@@ -73,9 +73,9 @@ function exportComputersCsv(
   ];
   const lines = rows.map((c) => [
     c.hostname,
-    c.os,
+    c.operating_system,
     c.ou,
-    c.enabled
+    c.status === "active"
       ? t("computers:csv_status_active")
       : t("computers:csv_status_inactive"),
     c.last_logon ?? "",
@@ -166,13 +166,13 @@ export function Computers() {
   const osOptions = useMemo(() => {
     const set = new Set<string>();
     computers.forEach((c) => {
-      if (c.os) set.add(c.os);
+      if (c.operating_system) set.add(c.operating_system);
     });
     return Array.from(set).sort();
   }, [computers]);
 
   const visibleComputers = useMemo(
-    () => (osFilter ? computers.filter((c) => c.os === osFilter) : computers),
+    () => (osFilter ? computers.filter((c) => c.operating_system === osFilter) : computers),
     [computers, osFilter],
   );
 
@@ -234,7 +234,7 @@ export function Computers() {
           <span
             className={clsx(
               "flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md",
-              osIconClass(c.os),
+              osIconClass(c.operating_system),
             )}
           >
             <Monitor size={14} />
@@ -247,7 +247,7 @@ export function Computers() {
       key: "os",
       header: t("computers:th_os"),
       render: (c: ADComputer) => (
-        <span className="text-secondary">{c.os || "—"}</span>
+        <span className="text-secondary">{c.operating_system || "—"}</span>
       ),
     },
     {
@@ -261,7 +261,7 @@ export function Computers() {
       key: "enabled",
       header: t("computers:th_status"),
       render: (c: ADComputer) => (
-        <StatusBadge status={c.enabled ? "enabled" : "disabled"} />
+        <StatusBadge status={c.status === "active" ? "enabled" : "disabled"} />
       ),
     },
     {
@@ -399,7 +399,7 @@ export function Computers() {
               <div
                 className={clsx(
                   "flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full",
-                  osIconClass(selectedComputer.os),
+                  osIconClass(selectedComputer.operating_system),
                 )}
               >
                 <Monitor size={26} />
@@ -409,11 +409,11 @@ export function Computers() {
                   {selectedComputer.hostname || "—"}
                 </h3>
                 <p className="truncate text-sm text-secondary">
-                  {selectedComputer.os || t("computers:os_info_none")}
+                  {selectedComputer.operating_system || t("computers:os_info_none")}
                 </p>
                 <div className="mt-1.5">
                   <StatusBadge
-                    status={selectedComputer.enabled ? "enabled" : "disabled"}
+                    status={selectedComputer.status === "active" ? "enabled" : "disabled"}
                   />
                 </div>
               </div>
@@ -427,7 +427,7 @@ export function Computers() {
                 value={selectedComputer.hostname}
                 mono
               />
-              <InfoRow icon={Info} label={t("computers:label_os")} value={selectedComputer.os} />
+              <InfoRow icon={Info} label={t("computers:label_os")} value={selectedComputer.operating_system} />
               <InfoRow
                 icon={Network}
                 label={t("computers:label_ip_address")}
