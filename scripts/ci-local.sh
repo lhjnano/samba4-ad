@@ -60,6 +60,14 @@ else
 fi
 
 # ────────────────────────────────────────────────
+section "6. i18n translation completeness"
+if (cd frontend && node scripts/i18n-check.js); then
+  pass "i18n check"
+else
+  fail "i18n check — run: cd frontend && npm run i18n:extract"
+fi
+
+# ────────────────────────────────────────────────
 echo ""
 if [ $FAILED -eq 0 ]; then
   echo -e "${GREEN}══════════════════════════════════════${NC}"

@@ -200,38 +200,93 @@ display strings.
 
 ---
 
-## 8. Frontend i18n Policy
+## 8. Frontend i18n Policy (GNU gettext Model)
+
+This project adopts the **GNU gettext workflow** for internationalization.
+Strings are extracted from source code automatically, translations are
+maintained in structured catalog files, and completeness is enforced by CI.
 
 ### 8.1 Supported Languages
 
-| Code | Language | Status |
-|------|----------|--------|
-| `en` | English  | **Default** (fallback) |
-| `ko` | 한국어    | Supported |
+| Code | Language | Status | Role |
+|------|----------|--------|------|
+| `en` | English  | **Default** (fallback) | Source language (`xgettext`) |
+| `ko` | 한국어    | Supported | Target language (translated) |
 
-### 8.2 Requirements
+### 8.2 GNU gettext Workflow
 
-1. **No hardcoded UI strings** — All user-visible text in `.tsx` files MUST use
-   `t("namespace:key")` from `react-i18next`. Hardcoded Korean or English string
-   literals in JSX are forbidden.
+```
+Source code (.tsx)          CI / Pre-commit
+─────────────────           ──────────────────
+t("users:label_name")       npm run i18n:extract
+        │                          │
+        ▼                          ▼
+┌─────────────────┐       ┌──────────────────┐
+│ i18next-parser  │──────▶│ en.json (source) │  ← auto-filled from code
+│ (xgettext)      │       │ ko.json (target) │  ← missing keys flagged
+└─────────────────┘       └──────────────────┘
+                                 │
+                                 ▼
+                    npm run i18n:check
+                    (msgfmt --check equivalent)
+                    → CI passes/fails
+```
 
-2. **Translation file is the single source** — All UI strings live in
-   `frontend/src/i18n/locales/{en,ko}.json`. No inline string literals.
+### 8.3 Rules
 
-3. **localStorage persistence** — Language preference is stored under
-   `localStorage["lang"]` via `i18next-browser-languagedetector`. On first visit,
-   defaults to `en` (or navigator language if supported).
+1. **No hardcoded UI strings** — All user-visible text in `.tsx`/`.ts` files
+   MUST use `t("namespace:key")` from `react-i18next`. Hardcoded Korean or
+   English string literals in JSX are **forbidden**.
 
-4. **Namespace convention** — Each page/section has its own namespace:
+2. **Automated extraction** — Run `npm run i18n:extract` before every commit
+   to scan source code and update catalog files. This is the `xgettext`
+   equivalent. Missing keys are appended automatically.
+
+3. **English is the source language** — `en.json` values are auto-generated
+   from the key name. Translators fill in `ko.json`. Never edit `en.json`
+   values manually — they are derived from code.
+
+4. **Translation completeness enforced** — `npm run i18n:check` verifies
+   that every key in `en.json` has a non-empty translation in `ko.json`.
+   This check runs in CI (`ci-local.sh` step 6). **Missing translations
+   block the push.**
+
+5. **Namespace convention** — Each page/section has its own namespace:
    `common`, `setup`, `dashboard`, `users`, `groups`, `computers`, `ous`,
-   `gpos`, `dns`, `policies`, `logs`, `settings`, `api`.
+   `gpos`, `dns`, `policies`, `logs`, `settings`, `api`, `manual`.
 
-5. **Language switcher** — The Settings page provides a `<select>` to change
-   language. Changing language does NOT require a page reload (react-i18next
-   re-renders automatically).
+6. **localStorage persistence** — Language preference is stored under
+   `localStorage["lang"]` via `i18next-browser-languagedetector`. On first
+   visit, defaults to `en` (or navigator language if supported).
 
-6. **Locale-aware formatting** — Date/time formatting must respect the current
-   language (`en-US` vs `ko-KR`). Use `i18n.language` to select locale.
+7. **Locale-aware formatting** — Date/time formatting must respect the
+   current language (`en-US` vs `ko-KR`). Use `i18n.language` to select
+   locale.
+
+### 8.4 Developer Workflow
+
+```bash
+# 1. Add t() calls in your .tsx code
+#    e.g. <h1>{t("users:page_title")}</h1>
+
+# 2. Extract all new keys
+cd frontend && npm run i18n:extract
+
+# 3. Translate the new keys in ko.json
+#    (open src/i18n/locales/ko.json and fill in empty values)
+
+# 4. Verify completeness
+npm run i18n:check
+
+# 5. Run full CI
+cd .. && ./scripts/ci-local.sh
+```
+
+### 8.5 CI Integration
+
+`ci-local.sh` step 6 runs `npm run i18n:check`. If any key in `en.json`
+lacks a translation in `ko.json`, the CI **fails** and the push is blocked.
+Stale keys (in `ko.json` but not in `en.json`) are also flagged.
 
 > See DESIGN-INTEGRATION.md §10 for the full i18n implementation guide.
 
