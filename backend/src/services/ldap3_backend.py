@@ -296,10 +296,13 @@ class Ldap3Backend:
         sort="username",
         order="asc",
     ):
-        filt = "(&(objectClass=user)(objectCategory=person))"
+        parts = ["(objectClass=user)", "(objectCategory=person)"]
         if q:
             safe_q = q.replace("(", "").replace(")", "").replace("*", "\\2a")
-            filt += f"(|(sAMAccountName=*{safe_q}*)(displayName=*{safe_q}*)(mail=*{safe_q}*))"
+            parts.append(
+                f"(|(sAMAccountName=*{safe_q}*)(displayName=*{safe_q}*)(mail=*{safe_q}*))"
+            )
+        filt = "(&" + "".join(parts) + ")"
         with self._connect() as conn:
             rows = self._search(
                 conn,
@@ -497,16 +500,18 @@ class Ldap3Backend:
     def _group_filter(
         self, q: str | None, category: str | None, scope: str | None
     ) -> str:
-        filt = "(objectClass=group)"
+        parts: list[str] = ["(objectClass=group)"]
         if q:
             safe = _escape(q)
-            filt += f"(|(cn=*{safe}*)(name=*{safe}*)(displayName=*{safe}*))"
+            parts.append(f"(|(cn=*{safe}*)(name=*{safe}*)(displayName=*{safe}*))")
         if category == GroupCategory.SECURITY.value:
-            # security groups have the high bit set → negative groupType
-            filt += "(groupType<=0)"
+            parts.append("(groupType<=0)")
         elif category == GroupCategory.DISTRIBUTION.value:
-            filt += "(groupType>=0)"
-        return filt
+            parts.append("(groupType>=0)")
+        # Wrap in (&...) when multiple parts
+        if len(parts) == 1:
+            return parts[0]
+        return "(&" + "".join(parts) + ")"
 
     def list_groups(self, q=None, category=None, scope=None, page=1, limit=20):
         with self._connect() as conn:
@@ -899,10 +904,11 @@ class Ldap3Backend:
         return ComputerStatus.ACTIVE
 
     def list_computers(self, q=None, os_filter=None, status=None, page=1, limit=20):
-        filt = "(objectClass=computer)"
+        parts: list[str] = ["(objectClass=computer)"]
         if q:
             safe = _escape(q)
-            filt += f"(|(cn=*{safe}*)(dNSHostName=*{safe}*))"
+            parts.append(f"(|(cn=*{safe}*)(dNSHostName=*{safe}*))")
+        filt = "(&" + "".join(parts) + ")" if len(parts) > 1 else parts[0]
         with self._connect() as conn:
             rows = self._search(
                 conn,
@@ -1105,9 +1111,10 @@ class Ldap3Backend:
         return f"CN=Policies,CN=System,{self._base()}"
 
     def list_gpos(self, q=None, status=None, page=1, limit=20):
-        filt = "(objectClass=groupPolicyContainer)"
+        parts: list[str] = ["(objectClass=groupPolicyContainer)"]
         if q:
-            filt += f"(displayName=*{_escape(q)}*)"
+            parts.append(f"(displayName=*{_escape(q)}*)")
+        filt = "(&" + "".join(parts) + ")" if len(parts) > 1 else parts[0]
         with self._connect() as conn:
             rows = self._search(
                 conn,
