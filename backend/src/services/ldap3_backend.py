@@ -178,7 +178,8 @@ class Ldap3Backend:
             use_ssl=settings.ldap_use_ssl,
             tls=self._tls,
             get_info=ALL,
-            connect_timeout=settings.ldap_timeout,
+            # Python 3.14 struct.pack rejects float timeouts — use int
+            connect_timeout=int(settings.ldap_timeout),
         )
 
     # ------------------------------------------------------------------
@@ -191,7 +192,7 @@ class Ldap3Backend:
             password=self._cfg.ldap_bind_password.get_secret_value(),
             auto_bind=False,
             read_only=False,
-            receive_timeout=self._cfg.ldap_timeout,
+            receive_timeout=int(self._cfg.ldap_timeout),
         )
         # StartTLS upgrade before bind (Samba requires transport encryption)
         conn.open(read_server_info=False)
