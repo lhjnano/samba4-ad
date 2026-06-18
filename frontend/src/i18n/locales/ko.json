@@ -606,6 +606,9 @@
     "nas_example_title": "NAS / SMB 클라이언트 — 필수 입력값",
     "nas_example": "DNS 서버:       {{dcIp}}\n도메인 (FQDN):  {{realm}}\nNetBIOS 이름:  {{netbios}}\nRealm:         {{realm}}\n\nLDAP Base DN:  {{baseDn}}\nLDAP 서버:     ldap://{{dcIp}}:389\n\nAD 사용자명:   Administrator@{{realm}}\nAD 비밀번호:   (관리자 비밀번호)\n\n워크그룹:       {{netbios}}",
     "smbconf_title": "Linux / smb.conf 예시",
-    "smbconf_example": "[global]\n   workgroup = {{netbios}}\n   realm = {{realm}}\n   security = ads\n   dns forwarder = {{dcIp}}\n   idmap config * : backend = tdb\n   idmap config * : range = 3000-7999\n   idmap config {{netbios}} : backend = rid\n   idmap config {{netbios}} : range = 10000-999999\n   template shell = /bin/bash\n   template homedir = /home/%U"
+    "smbconf_example": "[global]\n   workgroup = {{netbios}}\n   realm = {{realm}}\n   security = ads\n   dns forwarder = {{dcIp}}\n   idmap config * : backend = tdb\n   idmap config * : range = 3000-7999\n   idmap config {{netbios}} : backend = rid\n   idmap config {{netbios}} : range = 10000-999999\n   template shell = /bin/bash\n   template homedir = /home/%U",
+    "conn_admin_pass": "관리자 비밀번호 (초기)",
+    "conn_admin_pass_note": "⚠️ 도메인 프로비저닝 시 설정된 비밀번호입니다. 보안을 위해 최초 로그인 후 즉시 변경하세요.",
+    "conn_admin_pass_change": "변경 방법: 사용자 페이지 → Administrator 클릭 → 비밀번호 재설정, 또는 명령어: samba-tool user setpassword Administrator"
   }
 }

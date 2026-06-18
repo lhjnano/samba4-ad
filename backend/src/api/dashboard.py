@@ -9,6 +9,8 @@ and re-map field names to the frontend's TypeScript interfaces.
 
 from __future__ import annotations
 
+import time
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
@@ -93,21 +95,45 @@ def dashboard_stats(
     )
 
 
+def _format_uptime(seconds: float) -> str:
+    """Format uptime seconds into a human-readable string."""
+    if seconds <= 0:
+        return "—"
+    days = int(seconds // 86400)
+    hours = int((seconds % 86400) // 3600)
+    mins = int((seconds % 3600) // 60)
+    parts: list[str] = []
+    if days:
+        parts.append(f"{days}d")
+    if hours:
+        parts.append(f"{hours}h")
+    parts.append(f"{mins}m")
+    return " ".join(parts)
+
+
 @router.get("/system-health", response_model=SystemHealth)
 def system_health(
     directory: DirectoryBackend = Depends(get_directory),
 ) -> SystemHealth:
     """CPU / memory / disk percentages for the resource gauges."""
+    import psutil
+
     sys = directory.system_resources()
     mem_pct = (
         (sys.memory_used_gb / sys.memory_total_gb * 100) if sys.memory_total_gb else 0
     )
     disk_pct = (sys.disk_used_gb / sys.disk_total_gb * 100) if sys.disk_total_gb else 0
+
+    # Real host uptime (always available, even in mock mode)
+    uptime_str = _format_uptime(
+        psutil.boot_time() and (time.time() - psutil.boot_time())
+    )
+
     return SystemHealth(
         cpu_percent=round(sys.cpu_percent, 1),
         memory_percent=round(mem_pct, 1),
         disk_percent=round(disk_pct, 1),
-        uptime="—",
+        uptime=uptime_str,
     )
 
 

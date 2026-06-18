@@ -606,6 +606,9 @@
     "nas_example_title": "NAS / SMB Client — Required Fields",
     "nas_example": "DNS Server:     {{dcIp}}\nDomain (FQDN):  {{realm}}\nNetBIOS Name:  {{netbios}}\nRealm:         {{realm}}\n\nLDAP Base DN:  {{baseDn}}\nLDAP Server:   ldap://{{dcIp}}:389\n\nAD Username:   Administrator@{{realm}}\nAD Password:   (your admin password)\n\nWorkgroup:     {{netbios}}",
     "smbconf_title": "Linux / smb.conf Example",
-    "smbconf_example": "[global]\n   workgroup = {{netbios}}\n   realm = {{realm}}\n   security = ads\n   dns forwarder = {{dcIp}}\n   idmap config * : backend = tdb\n   idmap config * : range = 3000-7999\n   idmap config {{netbios}} : backend = rid\n   idmap config {{netbios}} : range = 10000-999999\n   template shell = /bin/bash\n   template homedir = /home/%U"
+    "smbconf_example": "[global]\n   workgroup = {{netbios}}\n   realm = {{realm}}\n   security = ads\n   dns forwarder = {{dcIp}}\n   idmap config * : backend = tdb\n   idmap config * : range = 3000-7999\n   idmap config {{netbios}} : backend = rid\n   idmap config {{netbios}} : range = 10000-999999\n   template shell = /bin/bash\n   template homedir = /home/%U",
+    "conn_admin_pass": "Admin Password (initial)",
+    "conn_admin_pass_note": "⚠️ This is the password set during domain provisioning. Change it immediately after first login for security.",
+    "conn_admin_pass_change": "To change: use the Users page → click Administrator → Reset Password, or run: samba-tool user setpassword Administrator"
   }
 }

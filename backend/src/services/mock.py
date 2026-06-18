@@ -980,12 +980,22 @@ class MockDirectory:
         ]
 
     def system_resources(self) -> SystemResources:
+        """Read real host CPU / memory / disk usage via psutil.
+
+        System resources are host-level metrics, not AD data.  Even in
+        mock mode we report *real* values so the dashboard always reflects
+        the actual server state.
+        """
+        import psutil
+
+        mem = psutil.virtual_memory()
+        disk = psutil.disk_usage("/")
         return SystemResources(
-            cpu_percent=34.0,
-            memory_used_gb=5.2,
-            memory_total_gb=8.0,
-            disk_used_gb=42.0,
-            disk_total_gb=100.0,
+            cpu_percent=round(psutil.cpu_percent(interval=0.5), 1),
+            memory_used_gb=round(mem.used / 1024**3, 1),
+            memory_total_gb=round(mem.total / 1024**3, 1),
+            disk_used_gb=round(disk.used / 1024**3, 1),
+            disk_total_gb=round(disk.total / 1024**3, 1),
         )
 
     # ====================================================================

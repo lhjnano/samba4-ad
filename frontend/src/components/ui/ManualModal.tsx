@@ -65,13 +65,34 @@ const SECTIONS: ManualSection[] = [
   },
 ];
 
+// ── Clipboard helper (works on HTTP, not just HTTPS) ───────────
+function copyToClipboard(text: string) {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text);
+    return;
+  }
+  // Fallback for non-secure (HTTP) context
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand("copy");
+  } catch {
+    /* noop */
+  }
+  document.body.removeChild(ta);
+}
+
 // ── Copy button ────────────────────────────────────
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
       onClick={() => {
-        navigator.clipboard.writeText(value);
+        copyToClipboard(value);
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
       }}
