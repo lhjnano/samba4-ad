@@ -180,6 +180,27 @@ export function GPOs() {
     setShowDeleteConfirm(false);
   }
 
+  // ── Toggle status ────────────────────────────────
+  async function handleToggleStatus() {
+    if (!selectedGPO) return;
+    setActionLoading("toggle");
+    try {
+      const newStatus = selectedGPO.status === "enabled" ? "disabled" : "enabled";
+      await api.patch(`${API_BASE}/gpo/${selectedGPO.id}/status`, null, {
+        params: { status: newStatus },
+      });
+      // Refresh detail
+      const { data } = await api.get<GPODetail>(`${API_BASE}/gpo/${selectedGPO.id}`);
+      setSelectedGPO(data);
+      setToast({ type: "success", message: t("gpos:toast_status_updated") });
+      fetchGPOs();
+    } catch {
+      setToast({ type: "error", message: t("gpos:toast_status_update_failed") });
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   // ── Delete ───────────────────────────────────────
   async function handleDelete() {
     if (!selectedGPO) return;
@@ -497,6 +518,19 @@ export function GPOs() {
             {/* Danger zone */}
             <DetailSection title={t("gpos:section_policy_management")}>
               <div className="space-y-2 p-4">
+                <button
+                  onClick={handleToggleStatus}
+                  disabled={actionLoading === "toggle"}
+                  className="btn-outline w-full justify-center disabled:opacity-50"
+                >
+                  {actionLoading === "toggle" ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : null}
+                  {selectedGPO.status === "enabled"
+                    ? t("gpos:btn_disable")
+                    : t("gpos:btn_enable")}
+                </button>
+
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
                   className="btn-danger w-full justify-center"

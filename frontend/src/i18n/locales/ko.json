@@ -402,7 +402,11 @@
     "toast_gpo_deleted": "GPO가 삭제되었습니다",
     "toast_delete_failed": "삭제에 실패했습니다",
     "toast_gpo_created": "GPO가 생성되었습니다",
-    "toast_gpo_create_failed": "GPO 생성에 실패했습니다"
+    "toast_gpo_create_failed": "GPO 생성에 실패했습니다",
+    "btn_disable": "비활성화",
+    "btn_enable": "활성화",
+    "toast_status_updated": "GPO 상태가 업데이트되었습니다",
+    "toast_status_update_failed": "GPO 상태 업데이트에 실패했습니다"
   },
   "dns": {
     "title": "DNS 관리",

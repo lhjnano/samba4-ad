@@ -402,7 +402,11 @@
     "toast_gpo_deleted": "GPO has been deleted",
     "toast_delete_failed": "Failed to delete",
     "toast_gpo_created": "GPO has been created",
-    "toast_gpo_create_failed": "Failed to create GPO"
+    "toast_gpo_create_failed": "Failed to create GPO",
+    "btn_disable": "Disable",
+    "btn_enable": "Enable",
+    "toast_status_updated": "GPO status updated",
+    "toast_status_update_failed": "Failed to update GPO status"
   },
   "dns": {
     "title": "DNS Management",
