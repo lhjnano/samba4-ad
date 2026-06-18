@@ -1431,13 +1431,7 @@ class Ldap3Backend:
             conn.search(
                 self._base(),
                 "(objectClass=domainDNS)",
-                attributes=[
-                    "minPwdLen",
-                    "maxPwdAge",
-                    "minPwdAge",
-                    "pwdHistoryLength",
-                    "pwdProperties",
-                ],
+                attributes=["*"],
             )
             if not conn.entries:
                 return PasswordPolicy(
@@ -1471,11 +1465,7 @@ class Ldap3Backend:
             conn.search(
                 self._base(),
                 "(objectClass=domainDNS)",
-                attributes=[
-                    "lockoutThreshold",
-                    "lockoutDuration",
-                    "lockOutObservationWindow",
-                ],
+                attributes=["*"],
             )
             if not conn.entries:
                 return LockoutPolicy(
