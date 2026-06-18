@@ -71,14 +71,22 @@ from src.services.directory import (
 )
 
 
-def _ad_time_to_dt(raw: str | None) -> datetime | None:
-    """Convert an AD LDAP Generalized Time / interval to a datetime."""
+def _ad_time_to_dt(raw: str | datetime | None) -> datetime | None:
+    """Convert an AD LDAP Generalized Time / interval to a datetime.
+
+    ldap3 may return datetime objects directly (auto-parsed) or raw
+    strings in Generalized Time format (YYYYMMDDHHMMSS.0Z).
+    """
     if not raw:
         return None
+    if isinstance(raw, datetime):
+        return raw if raw.tzinfo else raw.replace(tzinfo=UTC)
     try:
         # Generalized time: YYYYMMDDHHMMSS.0Z
-        return datetime.strptime(raw.split(".")[0], "%Y%m%d%H%M%S").replace(tzinfo=UTC)
-    except ValueError:
+        return datetime.strptime(str(raw).split(".")[0], "%Y%m%d%H%M%S").replace(
+            tzinfo=UTC
+        )
+    except (ValueError, TypeError):
         return None
 
 
