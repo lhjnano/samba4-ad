@@ -45,7 +45,8 @@
     "username": "Username",
     "password": "Password",
     "login_subtitle": "Active Directory domain management",
-    "default_account_hint": "Default account: {{creds}} (mock mode)"
+    "default_account_hint": "Default account: {{creds}} (mock mode)",
+    "edit": "Edit"
   },
   "setup": {
     "title_app": "AD Manager Setup",
@@ -192,7 +193,9 @@
     "toast_delete_failed": "Failed to delete",
     "toast_user_created_groups_failed": "User created but group assignment failed",
     "toast_user_created": "User has been created",
-    "toast_user_create_failed": "Failed to create user"
+    "toast_user_create_failed": "Failed to create user",
+    "toast_user_updated": "User updated",
+    "toast_user_update_failed": "Failed to update user"
   },
   "groups": {
     "title": "Group Management",

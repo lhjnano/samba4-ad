@@ -124,6 +124,10 @@ export function Users() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
 
+  // Edit mode
+  const [editMode, setEditMode] = useState(false);
+  const [editForm, setEditForm] = useState({ display_name: "", email: "" });
+
   // Detail actions
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showReset, setShowReset] = useState(false);
@@ -247,6 +251,40 @@ export function Users() {
         type: "error",
         message:
           (err as { message?: string })?.message ?? t("users:toast_status_failed"),
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  function startEdit() {
+    if (!selectedUser) return;
+    setEditForm({
+      display_name: selectedUser.display_name || "",
+      email: selectedUser.email || "",
+    });
+    setEditMode(true);
+  }
+
+  async function handleSaveEdit() {
+    if (!selectedUser) return;
+    setActionLoading("edit");
+    try {
+      const { data } = await api.patch<ADUser>(
+        `${API_BASE}/users/${selectedUser.id}`,
+        {
+          display_name: editForm.display_name.trim() || undefined,
+          email: editForm.email.trim() || undefined,
+        },
+      );
+      setSelectedUser(data);
+      setEditMode(false);
+      setToast({ type: "success", message: t("users:toast_user_updated") });
+      fetchUsers();
+    } catch (err) {
+      setToast({
+        type: "error",
+        message: (err as { message?: string })?.message ?? t("users:toast_user_update_failed"),
       });
     } finally {
       setActionLoading(null);
@@ -508,18 +546,59 @@ export function Users() {
 
             {/* Basic info */}
             <DetailSection title={t("users:section_basic_info")}>
-              <InfoRow icon={Mail} label={t("users:label_email")} value={selectedUser.email} />
-              <InfoRow
-                icon={FolderTree}
-                label={t("users:label_ou")}
-                value={selectedUser.ou}
-                mono
-              />
-              <InfoRow
-                icon={Clock}
-                label={t("users:label_last_logon")}
-                value={formatDate(selectedUser.last_logon)}
-              />
+              {editMode ? (
+                <div className="space-y-3 p-4">
+                  <div>
+                    <label className="label">{t("users:label_display_name")}</label>
+                    <input
+                      className="input"
+                      value={editForm.display_name}
+                      onChange={(e) => setEditForm({ ...editForm, display_name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="label">{t("users:label_email")}</label>
+                    <input
+                      className="input"
+                      type="email"
+                      value={editForm.email}
+                      onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSaveEdit}
+                      disabled={actionLoading === "edit"}
+                      className="btn-primary flex-1 justify-center"
+                    >
+                      {actionLoading === "edit" ? <Loader2 size={16} className="animate-spin" /> : t("common:save")}
+                    </button>
+                    <button onClick={() => setEditMode(false)} className="btn-outline flex-1 justify-center">
+                      {t("common:cancel")}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <InfoRow icon={Mail} label={t("users:label_email")} value={selectedUser.email} />
+                  <InfoRow
+                    icon={FolderTree}
+                    label={t("users:label_ou")}
+                    value={selectedUser.ou}
+                    mono
+                  />
+                  <InfoRow
+                    icon={Clock}
+                    label={t("users:label_last_logon")}
+                    value={formatDate(selectedUser.last_logon)}
+                  />
+                  <div className="px-4 pb-2">
+                    <button onClick={startEdit} className="btn-outline w-full justify-center text-sm">
+                      {t("common:edit")}
+                    </button>
+                  </div>
+                </>
+              )}
             </DetailSection>
 
             {/* Management actions */}

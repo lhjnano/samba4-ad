@@ -45,7 +45,8 @@
     "username": "사용자 이름",
     "password": "비밀번호",
     "login_subtitle": "Active Directory 도메인 관리",
-    "default_account_hint": "기본 계정: {{creds}} (mock 모드)"
+    "default_account_hint": "기본 계정: {{creds}} (mock 모드)",
+    "edit": "편집"
   },
   "setup": {
     "title_app": "AD Manager 설정",
@@ -192,7 +193,9 @@
     "toast_delete_failed": "삭제에 실패했습니다",
     "toast_user_created_groups_failed": "사용자가 생성되었으나 그룹 할당에 실패했습니다",
     "toast_user_created": "사용자가 생성되었습니다",
-    "toast_user_create_failed": "사용자 생성에 실패했습니다"
+    "toast_user_create_failed": "사용자 생성에 실패했습니다",
+    "toast_user_updated": "사용자가 수정되었습니다",
+    "toast_user_update_failed": "사용자 수정에 실패했습니다"
   },
   "groups": {
     "title": "그룹 관리",
