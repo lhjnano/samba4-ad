@@ -79,12 +79,19 @@ class SambaTool:
         """
         cmd = [self._cfg.samba_tool_path, *parts]
         if self._cfg.app_mode == "ldap":
+            # Extract sAMAccountName from DN for samba-tool -U
+            # e.g. "CN=Administrator,CN=Users,DC=CORP,DC=LOCAL" → "Administrator"
+            dn = self._cfg.ldap_bind_dn
+            if dn.upper().startswith("CN="):
+                username = dn.split(",")[0].split("=", 1)[1]
+            else:
+                username = dn
             cmd.extend(
                 [
                     "-H",
                     f"ldap://{self._cfg.ldap_host}",
                     "-U",
-                    f"{self._cfg.ldap_bind_dn}%{self._cfg.ldap_bind_password.get_secret_value()}",
+                    f"{username}%{self._cfg.ldap_bind_password.get_secret_value()}",
                     "--use-kerberos=off",
                 ]
             )
