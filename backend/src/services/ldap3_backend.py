@@ -275,7 +275,7 @@ class Ldap3Backend:
                 UserSummary(
                     id=encode_id(r["dn"]),
                     username=r.get("sAMAccountName") or "",
-                    display_name=r.get("displayName"),
+                    display_name=r.get("displayName") or r.get("sAMAccountName"),
                     email=r.get("mail"),
                     ou=_parent_ou_name(r["dn"]),
                     status=st,
@@ -324,7 +324,7 @@ class Ldap3Backend:
         return UserDetail(
             id=encode_id(dn),
             username=r.get("sAMAccountName") or "",
-            display_name=r.get("displayName"),
+            display_name=r.get("displayName") or r.get("sAMAccountName"),
             first_name=r.get("givenName"),
             last_name=r.get("sn"),
             email=r.get("mail"),
@@ -1259,7 +1259,22 @@ class Ldap3Backend:
                     key, _, val = line.partition(":")
                     info[key.strip().lower().replace(" ", "_")] = val.strip()
 
-        # Also pull rootDSE for functional levels
+        # Get functional levels via samba-tool domain level show
+        # (more reliable than RootDSE on Samba AD)
+        level_res = tool._run(tool._base_cmd("domain", "level", "show"))
+        if level_res.ok and level_res.stdout:
+            for line in level_res.stdout.splitlines():
+                lower = line.lower()
+                if "domain function level:" in lower:
+                    info["domain_functional_level"] = (
+                        line.split(":", 1)[1].strip().replace("(Windows) ", "")
+                    )
+                elif "forest function level:" in lower:
+                    info["forest_functional_level"] = (
+                        line.split(":", 1)[1].strip().replace("(Windows) ", "")
+                    )
+
+        # RootDSE is best-effort (may fail on some Samba configs)
         rootdse = None
         try:
             with self._connect() as conn:
@@ -1270,17 +1285,11 @@ class Ldap3Backend:
                     attributes=[
                         "defaultNamingContext",
                         "rootDomainNamingContext",
-                        "domainControllerFunctionality",
-                        "forestFunctionality",
-                        "domainFunctionality",
                         "dnsHostName",
-                        "serverName",
                     ],
                 )
                 rootdse = conn.entries[0] if conn.entries else None
         except Exception:  # noqa: S110 — RootDSE is best-effort
-            # RootDSE may fail on some Samba AD configurations — fall back
-            # gracefully to samba-tool output only.
             pass
 
         base = self._base()
@@ -1312,20 +1321,12 @@ class Ldap3Backend:
             fqdn=info.get("domain", fqdn),
             netbios_name=info.get("netbios_domain_name", netbios),
             forest_name=info.get("forest", fqdn),
-            domain_functional_level=(
-                _func_level(rootdse.domainFunctionality.value)
-                if rootdse and rootdse.domainFunctionality
-                else info.get("domain_functional_level", "unknown")
-            ),
-            forest_functional_level=(
-                _func_level(rootdse.forestFunctionality.value)
-                if rootdse and rootdse.forestFunctionality
-                else "unknown"
-            ),
+            domain_functional_level=info.get("domain_functional_level", "unknown"),
+            forest_functional_level=info.get("forest_functional_level", "unknown"),
             dc_hostname=(
                 str(rootdse.dnsHostName.value).split(".")[0]
                 if rootdse and rootdse.dnsHostName
-                else info.get("dc_hostname")
+                else info.get("dc_name", "").split(".")[0] or netbios
             ),
             dc_ip=self._cfg.ldap_host,
             object_count=0,
