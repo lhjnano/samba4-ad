@@ -1426,65 +1426,43 @@ class Ldap3Backend:
                     servers.append(DnsServer(address=line, is_forwarder=True))
         return servers
 
+    def _pwd_settings(self) -> dict[str, str]:
+        """Parse 'samba-tool domain passwordsettings show' output."""
+        from src.services.samba_tool import SambaTool
+
+        tool = SambaTool(self._cfg)
+        res = tool._run(tool._base_cmd("domain", "passwordsettings", "show"))
+        info: dict[str, str] = {}
+        if res.ok and res.stdout:
+            for line in res.stdout.splitlines():
+                if ":" in line:
+                    key, _, val = line.partition(":")
+                    info[key.strip().lower()] = val.strip()
+        return info
+
     def password_policy(self) -> PasswordPolicy:
-        with self._connect() as conn:
-            conn.search(
-                self._base(),
-                "(objectClass=domainDNS)",
-                attributes=["*", "+"],
-            )
-            if not conn.entries:
-                return PasswordPolicy(
-                    min_length=0,
-                    max_age_days=0,
-                    min_age_days=0,
-                    history=0,
-                )
-            e = conn.entries[0]
-
-            # AD stores time as -100ns intervals; negative = duration in 100ns units
-            def to_days(val: object) -> int:
-                try:
-                    v = int(str(val))
-                    return abs(v) // (10_000_000 * 86400) if v else 0
-                except (ValueError, TypeError):
-                    return 0
-
-            props = int(str(e.pwdProperties)) if e.pwdProperties else 0
-            return PasswordPolicy(
-                min_length=int(str(e.minPwdLen)) if e.minPwdLen else 0,
-                max_age_days=to_days(e.maxPwdAge),
-                min_age_days=to_days(e.minPwdAge),
-                history=int(str(e.pwdHistoryLength)) if e.pwdHistoryLength else 0,
-                complexity=bool(props & 1),
-                reversible_encryption=bool(props & 16),
-            )
+        info = self._pwd_settings()
+        return PasswordPolicy(
+            min_length=int(info.get("minimum password length", "0") or "0"),
+            max_age_days=int(info.get("maximum password age (days)", "0") or "0"),
+            min_age_days=int(info.get("minimum password age (days)", "0") or "0"),
+            history=int(info.get("password history length", "0") or "0"),
+            complexity=info.get("password complexity", "off").lower() == "on",
+            reversible_encryption=info.get("store plaintext passwords", "off").lower()
+            == "on",
+        )
 
     def lockout_policy(self) -> LockoutPolicy:
-        with self._connect() as conn:
-            conn.search(
-                self._base(),
-                "(objectClass=domainDNS)",
-                attributes=["*", "+"],
-            )
-            if not conn.entries:
-                return LockoutPolicy(
-                    threshold=0, duration_minutes=0, observation_window_minutes=0
-                )
-            e = conn.entries[0]
-
-            def to_min(val: object) -> int:
-                try:
-                    v = int(str(val))
-                    return abs(v) // (10_000_000 * 60) if v else 0
-                except (ValueError, TypeError):
-                    return 0
-
-            return LockoutPolicy(
-                threshold=int(str(e.lockoutThreshold)) if e.lockoutThreshold else 0,
-                duration_minutes=to_min(e.lockoutDuration),
-                observation_window_minutes=to_min(e.lockOutObservationWindow),
-            )
+        info = self._pwd_settings()
+        return LockoutPolicy(
+            threshold=int(info.get("account lockout threshold (attempts)", "0") or "0"),
+            duration_minutes=int(
+                info.get("account lockout duration (mins)", "0") or "0"
+            ),
+            observation_window_minutes=int(
+                info.get("reset account lockout after (mins)", "0") or "0"
+            ),
+        )
 
     def set_password_policy(self, **fields: object) -> PasswordPolicy:
         from src.services.samba_tool import SambaTool
