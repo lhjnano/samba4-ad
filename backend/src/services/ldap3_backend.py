@@ -1260,22 +1260,28 @@ class Ldap3Backend:
                     info[key.strip().lower().replace(" ", "_")] = val.strip()
 
         # Also pull rootDSE for functional levels
-        with self._connect() as conn:
-            conn.search(
-                "",
-                "(objectClass=*)",
-                search_scope="BASE",
-                attributes=[
-                    "defaultNamingContext",
-                    "rootDomainNamingContext",
-                    "domainControllerFunctionality",
-                    "forestFunctionality",
-                    "domainFunctionality",
-                    "dnsHostName",
-                    "serverName",
-                ],
-            )
-            rootdse = conn.entries[0] if conn.entries else None
+        rootdse = None
+        try:
+            with self._connect() as conn:
+                conn.search(
+                    "",
+                    "(objectClass=*)",
+                    search_scope="BASE",
+                    attributes=[
+                        "defaultNamingContext",
+                        "rootDomainNamingContext",
+                        "domainControllerFunctionality",
+                        "forestFunctionality",
+                        "domainFunctionality",
+                        "dnsHostName",
+                        "serverName",
+                    ],
+                )
+                rootdse = conn.entries[0] if conn.entries else None
+        except Exception:  # noqa: S110 — RootDSE is best-effort
+            # RootDSE may fail on some Samba AD configurations — fall back
+            # gracefully to samba-tool output only.
+            pass
 
         base = self._base()
         fqdn = ".".join(

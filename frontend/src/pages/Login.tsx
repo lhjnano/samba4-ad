@@ -9,8 +9,8 @@ export function Login() {
   const { t } = useTranslation();
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -48,8 +48,11 @@ export function Login() {
         {/* Form card */}
         <form onSubmit={handleSubmit} className="card space-y-5 p-6">
           <div>
-            <label className="label">{t("common:username")}</label>
+            <label htmlFor="username" className="label">
+              {t("common:username")}
+            </label>
             <input
+              id="username"
               type="text"
               className="input"
               value={username}
@@ -60,8 +63,11 @@ export function Login() {
           </div>
 
           <div>
-            <label className="label">{t("common:password")}</label>
+            <label htmlFor="password" className="label">
+              {t("common:password")}
+            </label>
             <input
+              id="password"
               type="password"
               className="input"
               value={password}
@@ -92,10 +98,6 @@ export function Login() {
             )}
           </button>
         </form>
-
-        <p className="mt-4 text-center text-xs text-muted">
-          {t("common:default_account_hint", { creds: "admin / admin" })}
-        </p>
       </div>
     </div>
   );

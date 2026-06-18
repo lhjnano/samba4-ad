@@ -37,29 +37,29 @@ describe("Login", () => {
     vi.clearAllMocks();
   });
 
-  it("renders login form with default credentials", () => {
+  it("renders login form with empty inputs", () => {
     renderLogin();
     expect(screen.getByText("AD Manager")).toBeInTheDocument();
-    // Both username and password default to "admin"
-    const inputs = screen.getAllByDisplayValue("admin");
-    expect(inputs).toHaveLength(2);
+    const usernameInput = screen.getByLabelText(/username/i) as HTMLInputElement;
+    const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement;
+    expect(usernameInput.value).toBe("");
+    expect(passwordInput.value).toBe("");
     expect(screen.getByRole("button", { name: /Login/ })).toBeInTheDocument();
   });
 
-  it("shows hint text about mock credentials", () => {
-    renderLogin();
-    expect(screen.getByText(/admin \/ admin/)).toBeInTheDocument();
-  });
-
-  it("calls login on submit", async () => {
+  it("calls login on submit with entered credentials", async () => {
     mockLogin.mockResolvedValueOnce(undefined);
     const user = userEvent.setup();
     renderLogin();
 
+    const usernameInput = screen.getByLabelText(/username/i);
+    const passwordInput = screen.getByLabelText(/password/i);
+    await user.type(usernameInput, "Administrator");
+    await user.type(passwordInput, "Admin123!");
     await user.click(screen.getByRole("button", { name: /Login/ }));
 
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith("admin", "admin");
+      expect(mockLogin).toHaveBeenCalledWith("Administrator", "Admin123!");
     });
   });
 
@@ -68,6 +68,10 @@ describe("Login", () => {
     const user = userEvent.setup();
     renderLogin();
 
+    const usernameInput = screen.getByLabelText(/username/i);
+    const passwordInput = screen.getByLabelText(/password/i);
+    await user.type(usernameInput, "baduser");
+    await user.type(passwordInput, "badpass");
     await user.click(screen.getByRole("button", { name: /Login/ }));
 
     await waitFor(() => {
@@ -77,15 +81,12 @@ describe("Login", () => {
 
   it("allows editing username and password", async () => {
     const user = userEvent.setup();
-    const { container } = renderLogin();
+    renderLogin();
 
-    // Select by type since both default to "admin" with no labels
-    const usernameInput = container.querySelector('input[type="text"]')!;
-    const passwordInput = container.querySelector('input[type="password"]')!;
+    const usernameInput = screen.getByLabelText(/username/i);
+    const passwordInput = screen.getByLabelText(/password/i);
 
-    await user.clear(usernameInput);
     await user.type(usernameInput, "superuser");
-    await user.clear(passwordInput);
     await user.type(passwordInput, "secret123");
 
     expect(usernameInput).toHaveValue("superuser");
