@@ -118,6 +118,8 @@ export function Computers() {
     useState<ComputerDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Toast
   const [toast, setToast] = useState<Toast>(null);
@@ -208,6 +210,56 @@ export function Computers() {
     setDetailOpen(false);
     setSelectedComputer(null);
     setDetailError(null);
+    setShowDeleteConfirm(false);
+  }
+
+  // ── Actions ─────────────────────────────────────
+  async function handleToggleStatus() {
+    if (!selectedComputer) return;
+    setActionLoading("toggle");
+    try {
+      const newStatus = selectedComputer.status === "active" ? "inactive" : "active";
+      await api.patch(`${API_BASE}/computers/${selectedComputer.id}/status`, null, {
+        params: { status: newStatus },
+      });
+      setToast({ type: "success", message: t("computers:toast_status_updated") });
+      // Refresh detail
+      const { data } = await api.get<ComputerDetail>(`${API_BASE}/computers/${selectedComputer.id}`);
+      setSelectedComputer(data);
+      fetchComputers();
+    } catch {
+      setToast({ type: "error", message: t("computers:toast_status_update_failed") });
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleResetAccount() {
+    if (!selectedComputer) return;
+    setActionLoading("reset");
+    try {
+      await api.post(`${API_BASE}/computers/${selectedComputer.id}/reset`);
+      setToast({ type: "success", message: t("computers:toast_reset_done") });
+    } catch {
+      setToast({ type: "error", message: t("computers:toast_reset_failed") });
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleDelete() {
+    if (!selectedComputer) return;
+    setActionLoading("delete");
+    try {
+      await api.delete(`${API_BASE}/computers/${selectedComputer.id}`);
+      setToast({ type: "success", message: t("computers:toast_removed") });
+      closeDetail();
+      fetchComputers();
+    } catch {
+      setToast({ type: "error", message: t("computers:toast_remove_failed") });
+    } finally {
+      setActionLoading(null);
+    }
   }
 
   // ── Export ───────────────────────────────────────
@@ -450,6 +502,53 @@ export function Computers() {
                 label={t("computers:label_last_logon")}
                 value={formatDate(selectedComputer.last_logon)}
               />
+            </DetailSection>
+
+            {/* Management actions */}
+            <DetailSection title={t("computers:section_management")}>
+              <div className="space-y-2 p-4">
+                <button
+                  onClick={handleToggleStatus}
+                  disabled={actionLoading === "toggle"}
+                  className="btn-outline w-full justify-center disabled:opacity-50"
+                >
+                  {actionLoading === "toggle" ? <Loader2 size={16} className="animate-spin" /> : null}
+                  {selectedComputer.status === "active" ? t("computers:btn_disable") : t("computers:btn_enable")}
+                </button>
+                <button
+                  onClick={handleResetAccount}
+                  disabled={actionLoading === "reset"}
+                  className="btn-outline w-full justify-center disabled:opacity-50"
+                >
+                  {actionLoading === "reset" ? <Loader2 size={16} className="animate-spin" /> : null}
+                  {t("computers:btn_reset_account")}
+                </button>
+
+                {showDeleteConfirm ? (
+                  <div className="rounded-md border border-red/30 bg-red/5 p-3">
+                    <p className="mb-2 text-sm text-red">{t("computers:confirm_remove_msg", { name: selectedComputer.hostname })}</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleDelete}
+                        disabled={actionLoading === "delete"}
+                        className="btn-danger flex-1 justify-center text-sm"
+                      >
+                        {actionLoading === "delete" ? <Loader2 size={14} className="animate-spin" /> : t("common:confirm")}
+                      </button>
+                      <button onClick={() => setShowDeleteConfirm(false)} className="btn-outline flex-1 justify-center text-sm">
+                        {t("common:cancel")}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="w-full justify-center rounded-md border border-red/30 py-2 text-sm text-red hover:bg-red/5"
+                  >
+                    {t("computers:btn_remove_domain")}
+                  </button>
+                )}
+              </div>
             </DetailSection>
           </div>
         )}

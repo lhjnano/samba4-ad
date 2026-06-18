@@ -291,7 +291,19 @@
     "csv_status_inactive": "Inactive",
     "toast_nothing_to_export": "No computers to export",
     "toast_csv_export_done": "CSV export complete",
-    "toast_export_failed": "Failed to export"
+    "toast_export_failed": "Failed to export",
+    "section_management": "Management",
+    "btn_disable": "Disable",
+    "btn_enable": "Enable",
+    "btn_reset_account": "Reset Account",
+    "btn_remove_domain": "Remove from Domain",
+    "confirm_remove_msg": "Remove {name} from the domain?",
+    "toast_status_updated": "Computer status updated",
+    "toast_status_update_failed": "Failed to update status",
+    "toast_reset_done": "Computer account reset",
+    "toast_reset_failed": "Failed to reset account",
+    "toast_removed": "Computer removed from domain",
+    "toast_remove_failed": "Failed to remove computer"
   },
   "ous": {
     "title": "Organizational Unit Management",

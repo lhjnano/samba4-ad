@@ -291,7 +291,19 @@
     "csv_status_inactive": "비활성",
     "toast_nothing_to_export": "내보낼 컴퓨터가 없습니다",
     "toast_csv_export_done": "CSV 내보내기 완료",
-    "toast_export_failed": "내보내기에 실패했습니다"
+    "toast_export_failed": "내보내기에 실패했습니다",
+    "section_management": "관리",
+    "btn_disable": "비활성화",
+    "btn_enable": "활성화",
+    "btn_reset_account": "계정 재설정",
+    "btn_remove_domain": "도메인에서 제거",
+    "confirm_remove_msg": "{name}을(를) 도메인에서 제거하시겠습니까?",
+    "toast_status_updated": "컴퓨터 상태가 업데이트되었습니다",
+    "toast_status_update_failed": "상태 업데이트에 실패했습니다",
+    "toast_reset_done": "컴퓨터 계정이 재설정되었습니다",
+    "toast_reset_failed": "계정 재설정에 실패했습니다",
+    "toast_removed": "도메인에서 제거되었습니다",
+    "toast_remove_failed": "제거에 실패했습니다"
   },
   "ous": {
     "title": "OU 관리",
