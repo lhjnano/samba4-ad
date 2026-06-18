@@ -23,8 +23,11 @@ from dataclasses import dataclass
 
 from src.core.config import Settings
 
-# Disallow shell metacharacters in any value that becomes a CLI argument.
-_UNSAFE_CHARS = re.compile(r"[;&|`$<>!\n\r]")
+# Disallow shell metacharacters that could be dangerous.
+# Note: we use shell=False (subprocess list args), so shell injection
+# is not possible. We still block chars that could break argument parsing
+# or be misinterpreted. '!' is allowed (common in passwords).
+_UNSAFE_CHARS = re.compile(r"[;&|`<>\n\r]")
 
 
 def _safe(value: str, *, allow_eq: bool = False) -> str:
