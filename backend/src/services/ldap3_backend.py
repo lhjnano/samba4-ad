@@ -1468,14 +1468,19 @@ class Ldap3Backend:
         from src.services.samba_tool import SambaTool
 
         tool = SambaTool(self._cfg)
-        opts = {
-            "min_pwd_length": fields.get("min_length"),
-            "complexity": "on" if fields.get("complexity") else "off",
-            "history_length": fields.get("history"),
-            "min_pwd_age": fields.get("min_age_days"),
-            "max_pwd_age": fields.get("max_age_days"),
-        }
-        tool.domain_password_set(**{k: v for k, v in opts.items() if v is not None})
+        opts: dict[str, str] = {}
+        if fields.get("min_length") is not None:
+            opts["min_pwd_length"] = str(fields["min_length"])
+        if fields.get("complexity") is not None:
+            opts["complexity"] = "on" if fields["complexity"] else "off"
+        if fields.get("history") is not None:
+            opts["history_length"] = str(fields["history"])
+        if fields.get("min_age_days") is not None:
+            opts["min_pwd_age"] = str(fields["min_age_days"])
+        if fields.get("max_age_days") is not None:
+            opts["max_pwd_age"] = str(fields["max_age_days"])
+        if opts:
+            tool.domain_password_set(**opts)
         return self.password_policy()
 
     def set_lockout_policy(self, **fields: object) -> LockoutPolicy:
