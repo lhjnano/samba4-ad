@@ -6,7 +6,7 @@ Group Policy Object routes — ``/api/v1/gpo``.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from src.api._errors import to_http_error
 from src.core.deps import get_directory
@@ -29,15 +29,10 @@ class GpoListItem(BaseModel):
     """Flat GPO row for the management table (matches frontend GPO type)."""
 
     id: str
-    name: str
-    dn: str = ""
-    description: str = ""
+    display_name: str
     status: str = "enabled"
-    links: list[str] = Field(default_factory=list)
-    created: str = ""
-    modified: str = ""
-    computer_version: int = 0
-    user_version: int = 0
+    description: str = ""
+    link_count: int = 0
 
 
 class PaginatedGPOs(BaseModel):
@@ -69,10 +64,10 @@ def list_gpos(
     mapped = [
         GpoListItem(
             id=g.id,
-            name=g.display_name,
+            display_name=g.display_name,
             description=g.description or "",
             status=g.status.value if hasattr(g.status, "value") else str(g.status),
-            links=[],  # link target names would require extra lookups
+            link_count=g.link_count,
         )
         for g in items
     ]
