@@ -1469,8 +1469,8 @@ class Ldap3Backend:
 
         tool = SambaTool(self._cfg)
         opts = {
-            "min_pwd_len": fields.get("min_length"),
-            "pwd_complexity": "on" if fields.get("complexity") else "off",
+            "min_pwd_length": fields.get("min_length"),
+            "complexity": "on" if fields.get("complexity") else "off",
             "history_length": fields.get("history"),
             "min_pwd_age": fields.get("min_age_days"),
             "max_pwd_age": fields.get("max_age_days"),
