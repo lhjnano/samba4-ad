@@ -12,6 +12,7 @@ tests use :class:`src.services.mock.MockDirectory`.
 
 from __future__ import annotations
 
+import contextlib
 import re
 import socket
 import ssl
@@ -1259,22 +1260,8 @@ class Ldap3Backend:
                     key, _, val = line.partition(":")
                     info[key.strip().lower().replace(" ", "_")] = val.strip()
 
-        # Get functional levels via samba-tool domain level show
-        # (more reliable than RootDSE on Samba AD)
-        level_res = tool._run(tool._base_cmd("domain", "level", "show"))
-        if level_res.ok and level_res.stdout:
-            for line in level_res.stdout.splitlines():
-                lower = line.lower()
-                if "domain function level:" in lower:
-                    info["domain_functional_level"] = (
-                        line.split(":", 1)[1].strip().replace("(Windows) ", "")
-                    )
-                elif "forest function level:" in lower:
-                    info["forest_functional_level"] = (
-                        line.split(":", 1)[1].strip().replace("(Windows) ", "")
-                    )
-
-        # RootDSE is best-effort (may fail on some Samba configs)
+        # RootDSE: request "*" (not individual operational attribute names,
+        # which cause LDAPAttributeError on Samba AD)
         rootdse = None
         try:
             with self._connect() as conn:
@@ -1282,11 +1269,7 @@ class Ldap3Backend:
                     "",
                     "(objectClass=*)",
                     search_scope="BASE",
-                    attributes=[
-                        "defaultNamingContext",
-                        "rootDomainNamingContext",
-                        "dnsHostName",
-                    ],
+                    attributes=["*"],
                 )
                 rootdse = conn.entries[0] if conn.entries else None
         except Exception:  # noqa: S110 — RootDSE is best-effort
@@ -1317,17 +1300,25 @@ class Ldap3Backend:
             except (ValueError, TypeError):
                 return str(val) if val else "unknown"
 
+        # Extract functional levels from RootDSE
+        dfl = "unknown"
+        ffl = "unknown"
+        dc_host = ""
+        if rootdse:
+            with contextlib.suppress(Exception):
+                dfl = _func_level(rootdse.domainFunctionality.value)
+            with contextlib.suppress(Exception):
+                ffl = _func_level(rootdse.forestFunctionality.value)
+            with contextlib.suppress(Exception):
+                dc_host = str(rootdse.dnsHostName.value).split(".")[0]
+
         return DomainInfo(
             fqdn=info.get("domain", fqdn),
             netbios_name=info.get("netbios_domain_name", netbios),
             forest_name=info.get("forest", fqdn),
-            domain_functional_level=info.get("domain_functional_level", "unknown"),
-            forest_functional_level=info.get("forest_functional_level", "unknown"),
-            dc_hostname=(
-                str(rootdse.dnsHostName.value).split(".")[0]
-                if rootdse and rootdse.dnsHostName
-                else info.get("dc_name", "").split(".")[0] or netbios
-            ),
+            domain_functional_level=dfl,
+            forest_functional_level=ffl,
+            dc_hostname=dc_host or info.get("dc_name", "").split(".")[0] or netbios,
             dc_ip=self._cfg.ldap_host,
             object_count=0,
             created=info.get("creation_time"),

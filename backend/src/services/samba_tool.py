@@ -180,9 +180,7 @@ class SambaTool:
     # Domain
     # ==================================================================
     def domain_info(self) -> ToolResult:
-        return self._run(
-            self._base_cmd("domain", "info", "--ipaddress", self._cfg.ldap_host)
-        )
+        return self._run(self._base_cmd("domain", "info", self._cfg.ldap_host))
 
     def domain_password_set(self, **opts: object) -> ToolResult:
         cmd = self._base_cmd("domain", "passwordsettings", "set")
