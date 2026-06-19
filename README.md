@@ -2,9 +2,41 @@
 
 > **Web-based admin portal for Samba 4 Active Directory Domain Controller**
 
-Replace Windows Server AD management tools (ADUC, ADAC) with a modern,
-dark-themed web UI for managing users, groups, organizational units,
-domain-joined devices, group policies, and domain health.
+Replace Windows Server AD licensing with a free, open-source alternative.
+Manage users, groups, computers, OUs, GPOs, DNS, and domain policies through
+a modern web interface — no Windows Server required.
+
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)](https://python.org)
+[![React](https://img.shields.io/badge/React-19+-61DAFB?logo=react&logoColor=white)](https://react.dev)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+
+---
+
+## Sponsors
+
+If this project helps you reduce Windows Server costs, please consider supporting development:
+
+[![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-Support-blue?logo=github-sponsors&style=for-the-badge)](https://github.com/sponsors/lhjnano)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20coffee-FF5E5B?logo=ko-fi&logoColor=white&style=for-the-badge)](https://ko-fi.com/lhjnano)
+
+---
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **Dashboard** | Real-time CPU/Memory/Disk monitoring, AD stats, service health |
+| **Users** | CRUD, search, enable/disable, password reset, inline editing |
+| **Groups** | CRUD, search, member add/remove |
+| **Computers** | List joined devices, disable/enable, reset account, remove from domain |
+| **OUs** | Tree view, create/edit/delete |
+| **GPOs** | List, create, delete, enable/disable toggle |
+| **DNS** | Real zone/record management via `samba-tool dns` (add/delete records) |
+| **Policies** | Password & lockout policy view/edit |
+| **Logs** | Real system logs from journald (filter by severity/source/keyword) |
+| **Domain Info** | Functional level, FSMO roles, DC info |
+| **i18n** | English + Korean (GNU gettext workflow, 610+ translated keys) |
 
 ## Architecture
 
@@ -12,11 +44,12 @@ domain-joined devices, group policies, and domain health.
 ┌─────────────────────────────────────────────────────┐
 │                  Browser (React SPA)                 │
 │   Dashboard · Users · Groups · OU · Devices · GPO   │
+│   DNS · Policies · Logs · Settings                   │
 └────────────────────────┬────────────────────────────┘
                          │ REST API (JSON)
 ┌────────────────────────▼────────────────────────────┐
 │              FastAPI Backend (Python)                 │
-│   Auth · LDAP Query · samba-tool wrapper · Health    │
+│   Auth · LDAP Query · samba-tool · journald · DNS    │
 └───────────────┬────────────────┬─────────────────────┘
                 │                │
     ┌───────────▼──┐   ┌────────▼────────┐
@@ -25,7 +58,7 @@ domain-joined devices, group policies, and domain health.
     └──────┬───────┘   └────────┬────────┘
            │                    │
 ┌──────────▼────────────────────▼──────────────────────┐
-│           Samba 4 AD DC (TEST.LOCAL)                 │
+│           Samba 4 AD DC (corp.local)                 │
 │   LDAP · Kerberos · DNS · SMB/CIFS · Replication     │
 └──────────────────────────────────────────────────────┘
 ```
@@ -34,133 +67,111 @@ domain-joined devices, group policies, and domain health.
 
 ```bash
 # Clone
-git clone <repo-url>
+git clone https://github.com/lhjnano/samba4-ad.git
 cd samba4-ad
 
-# One-click setup
-bash scripts/setup-dev.sh
-
-# Or manual
-make install
-make install-hooks
-
-# Check project health
-make health
+# Install (requires sudo — provisions Samba AD DC + web app)
+sudo bash install.sh --domain corp.local --admin-pass 'YourPass123!'
 ```
 
-## Backend Development (Phase 1 + 2)
+After installation, open the web UI:
 
-The backend is a FastAPI application with an injectable directory backend:
+```
+http://<server-ip>:8000
+```
 
-- **`app_mode=mock`** (default) — in-memory `MockDirectory`, zero infrastructure needed
-- **`app_mode=ldap`** — connects to a real Samba 4 AD DC via `ldap3` + `samba-tool`
+Login with the domain administrator credentials set during installation.
+
+## Manual Setup
+
+<details>
+<summary>Click to expand</summary>
+
+### Backend
 
 ```bash
-# Set up virtual environment + dependencies
-make install-backend
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
 
-# Run the dev server (mock mode by default)
-make dev-backend
-# → http://localhost:8000/docs  (interactive OpenAPI / Swagger)
+# Development (mock mode — no Samba needed)
+APP_MODE=mock uvicorn src.main:app --reload
 
-# Run the full test suite (T0, mocked LDAP) with coverage
-make test-coverage
-
-# Lint + format
-make format-fix
-make lint-python
-
-# Phase 1 CLI (wraps samba-tool; requires APP_MODE=ldap + real DC)
-python scripts/samba_admin.py users --help
+# Production (LDAP mode — requires running Samba AD DC)
+APP_MODE=ldap uvicorn src.main:app --host 0.0.0.0
 ```
 
-### API surface
+### Frontend
 
-50 endpoints under `/api/v1` covering: `users`, `groups`, `ou`, `computers`,
-`gpo`, `domain`, `health`, `stats`, `alerts`. Every interactive element from
-the design previews is wired to an endpoint — no dead buttons (Phase 2 features
-like CSV export return explicit `501`).
-
-## Development Phases
-
-See [ADR-0003](docs/adr/0003-incremental-development-strategy.md) for full details.
-
-| Phase | Scope | Status |
-|-------|-------|--------|
-| **Phase 1** | CLI scripts (samba-tool wrappers) | ✅ Implemented — `scripts/samba_admin.py` |
-| **Phase 2** | FastAPI REST API | ✅ Implemented (mock backend) — 50 endpoints, OpenAPI at `/docs` |
-| **Phase 3** | React SPA | 🔲 UI mockups ready, not started |
-
-> **Governance note:** Phase 3 (UI) starts only after the Phase 2 API contract
-> is finalised. Per `DESIGN-INTEGRATION.md`, previews do not determine data
-> structure — the AD domain does. No UI is built yet by design.
-
-## UI Previews
-
-Static HTML mockups are in `previews/`:
-
-| File | Page |
-|------|------|
-| `01-dashboard.html` | Dashboard (stats, charts, services) |
-| `02-users.html` | User management (table, detail panel) |
-| `03-groups.html` | Group management (table, members) |
-| `04-ou.html` | OU management (tree view) |
-| `05-domain-join.html` | Domain join status (devices, OS breakdown) |
-| `06-gpo.html` | Group Policy Objects (list, settings) |
-| `07-settings.html` | Settings (general, domain, security) |
-
-Open in browser:
+```bash
+cd frontend
+npm install
+npm run dev    # Development server
+npm run build  # Production build
 ```
-file:///path/to/samba4-ad/previews/01-dashboard.html
+
+### Tests
+
+```bash
+# Full CI (lint + format + tests + build + i18n check)
+bash scripts/ci-local.sh
 ```
+
+</details>
+
+## Configuration
+
+Configuration is stored at `/etc/samba-ad-manager/env`:
+
+```ini
+APP_MODE=ldap              # mock (dev) or ldap (production)
+LDAP_HOST=127.0.0.1
+LDAP_PORT=389
+LDAP_BIND_DN=CN=Administrator,CN=Users,DC=CORP,DC=LOCAL
+LDAP_BIND_PASSWORD=YourPassword
+LDAP_SEARCH_BASE=DC=CORP,DC=LOCAL
+```
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 19, Vite, TypeScript, Tailwind CSS, react-i18next |
+| Backend | FastAPI, Python 3.12+, ldap3, psutil |
+| AD Server | Samba 4 AD DC (samba-tool, internal DNS) |
+| Deployment | systemd service, standard Linux |
+| i18n | GNU gettext workflow (i18next-parser, 610+ keys) |
 
 ## Project Structure
 
 ```
 samba4-ad/
-├── backend/               # FastAPI + ldap3 REST API (Phase 2)
+├── backend/
 │   ├── src/
-│   │   ├── api/           #   Route handlers
-│   │   ├── core/          #   Config, security, deps
-│   │   ├── models/        #   Pydantic schemas
-│   │   ├── services/      #   LDAP ops, samba-tool wrappers
-│   │   └── main.py        #   FastAPI app entry
+│   │   ├── api/          # FastAPI route handlers
+│   │   ├── core/         # Config, auth, dependencies
+│   │   ├── models/       # Pydantic schemas
+│   │   └── services/     # LDAP backend, samba-tool, mock
 │   └── tests/
-├── frontend/              # React + Vite SPA (Phase 3)
+├── frontend/
 │   ├── src/
+│   │   ├── pages/        # 12 page components
+│   │   ├── components/   # Reusable UI components
+│   │   └── i18n/         # EN/KO locale files
 │   └── package.json
-├── docs/
-│   ├── design-brief.md    # Design system specification
-│   ├── plan.html          # Infrastructure plan (Samba 4 AD DC)
-│   └── adr/               # Architecture Decision Records
-├── previews/              # Static HTML UI mockups (7 pages)
-├── scripts/               # Dev tooling (setup, health-check)
-├── .github/workflows/     # CI pipeline
-├── .pre-commit-config.yaml
-├── pyproject.toml         # Python lint/test config
-├── Makefile               # Unified task entry-point
-└── CONTRIBUTING.md
+├── scripts/              # CI, setup, utilities
+├── install.sh            # One-click installer
+├── GOVERNANCE.md         # Project governance
+└── pyproject.toml        # Lint/test/coverage config
 ```
-
-## Design System
-
-Dark theme (GitHub-inspired) with CSS custom properties:
-
-| Token | Value |
-|-------|-------|
-| Background | `#0d1117` / `#161b22` / `#1c2128` |
-| Primary accent | `#3b82f6` (blue) |
-| Success | `#10b981` (green) |
-| Warning | `#f59e0b` (yellow) |
-| Danger | `#ef4444` (red) |
-| Fonts | Inter (UI) + JetBrains Mono (data) |
-
-See [design-brief.md](docs/design-brief.md) for full spec.
 
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
+All commits must pass `bash scripts/ci-local.sh` (6 checks: ruff lint, ruff format, pytest ≥80% coverage, frontend build, vitest, i18n completeness).
+
 ## License
 
-Apache License 2.0
+Apache License 2.0 — see [LICENSE](LICENSE) for details.
