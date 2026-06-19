@@ -78,3 +78,22 @@ backend/static/
 # OS
 # ============================================
 Thumbs.db
+
+# ============================================
+# AI / Project Management (not part of product)
+# ============================================
+CLAUDE.md
+.claude/
+.hits/
+.agent-factory/
+docs/adr/
+docs/tracking/
+docs/design-brief.md
+docs/plan.md
+docs/plan.html
+
+# ============================================
+# Design assets (internal, not part of product)
+# ============================================
+previews/
+DESIGN-INTEGRATION.md
