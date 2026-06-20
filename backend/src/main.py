@@ -94,7 +94,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if auth_header.startswith("Bearer "):
             token = auth_header[7:]
             try:
-                decode_token(token)  # raises on invalid
+                payload = decode_token(token)  # raises on invalid
+                # Store user info for PBAC middleware
+                request.state.user = {
+                    "username": payload.get("sub", ""),
+                    "groups": payload.get("groups", []),
+                    "role": payload.get("role", "admin"),
+                }
                 return await call_next(request)
             except HTTPException:
                 pass  # invalid token → fall through to 401
@@ -110,6 +116,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(AuthMiddleware)
+
+# ── PBAC middleware (policy-based access control) ─────────────────────
+from src.core.pbac_middleware import PBACMiddleware  # noqa: E402
+
+app.add_middleware(PBACMiddleware)
 
 # ── Routes ────────────────────────────────────────────────────────────
 
