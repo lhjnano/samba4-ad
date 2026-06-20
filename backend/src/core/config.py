@@ -69,6 +69,12 @@ class Settings(BaseSettings):
     # Path to smb.conf — required by most samba-tool domain operations.
     samba_config: str = "/etc/samba/smb.conf"
 
+    # --- IAM / PBAC (Policy-Based Access Control) ---
+    pbac_enabled: bool = False
+    pbac_policy_dir: str = "/etc/samba-ad-manager/policies"
+    pbac_super_admin_group: str = "Domain Admins"
+    pbac_default_policy: str = "system/viewer.json"
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_cors(cls, v: object) -> object:

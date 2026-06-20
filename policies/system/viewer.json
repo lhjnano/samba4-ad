@@ -1,0 +1,11 @@
+{
+  "version": "2026-06-20",
+  "statement": [
+    {
+      "sid": "AllowDashboard",
+      "effect": "Allow",
+      "action": ["dashboard:Read", "domain:Read"],
+      "resource": ["*"]
+    }
+  ]
+}

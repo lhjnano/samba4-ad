@@ -1,0 +1,13 @@
+{
+  "version": "2026-06-20",
+  "statement": [
+    {
+      "sid": "AllowReadOnly",
+      "effect": "Allow",
+      "action": [
+        "*:List", "*:Read", "*:Export", "logs:Read"
+      ],
+      "resource": ["*"]
+    }
+  ]
+}

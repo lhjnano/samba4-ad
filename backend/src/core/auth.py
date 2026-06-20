@@ -234,3 +234,57 @@ async def get_current_user_optional(
         )
     except HTTPException:
         return None
+
+
+# ── PBAC permission dependency ────────────────────────────────────────
+
+
+def require_permission(action: str, resource_param: str | None = None):
+    """FastAPI dependency factory: enforce PBAC permission check.
+
+    Usage::
+
+        @router.delete("/users/{id}")
+        def delete_user(
+            id: str,
+            user: UserInfo = Depends(require_permission("users:Delete")),
+        ):
+            ...
+
+    If PBAC is disabled (``pbac_enabled=false``), all authenticated users
+    are allowed (backward-compatible with pre-PBAC behaviour).
+    """
+
+    async def checker(user: UserInfo = Depends(get_current_user)) -> UserInfo:
+        from src.core.config import settings
+
+        if not settings.pbac_enabled:
+            return user  # PBAC off — just need to be authenticated
+
+        from src.core.pbac import get_engine
+
+        engine = get_engine()
+        if engine is None:
+            return user  # Engine not initialised — allow
+
+        # Build user DN from username (best-effort for resource matching)
+        resource = "*"
+        allowed, matched = engine.evaluate(
+            user_dn=user.username,
+            group_dns=user.groups,
+            action=action,
+            resource=resource,
+        )
+
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "ACCESS_DENIED",
+                    "message": f"Permission denied: {action}",
+                    "matched_policy": matched,
+                },
+            )
+        return user
+
+    return checker

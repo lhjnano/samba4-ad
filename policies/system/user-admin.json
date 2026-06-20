@@ -1,0 +1,23 @@
+{
+  "version": "2026-06-20",
+  "statement": [
+    {
+      "sid": "AllowUserManagement",
+      "effect": "Allow",
+      "action": [
+        "users:List", "users:Read", "users:Create", "users:Update",
+        "users:ResetPassword", "users:SetStatus", "users:Unlock",
+        "users:Export",
+        "groups:List", "groups:Read", "groups:AddMember", "groups:RemoveMember",
+        "dashboard:Read", "domain:Read"
+      ],
+      "resource": ["*"]
+    },
+    {
+      "sid": "DenyDeleteAdmin",
+      "effect": "Deny",
+      "action": ["users:Delete"],
+      "resource": ["cn=Administrator,cn=Users,*"]
+    }
+  ]
+}

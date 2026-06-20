@@ -17,6 +17,7 @@ from src.api import (
     gpo,
     groups,
     health,
+    iam,
     logs,
     ou,
     policies,
@@ -43,3 +44,4 @@ api_router.include_router(dashboard.router)
 api_router.include_router(dns.router)
 api_router.include_router(logs.router)
 api_router.include_router(policies.router)
+api_router.include_router(iam.router)
