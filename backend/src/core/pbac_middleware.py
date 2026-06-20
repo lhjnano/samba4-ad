@@ -156,6 +156,18 @@ class PBACMiddleware(BaseHTTPMiddleware):
                 action,
                 user.get("username", "?"),
             )
+            # Audit log: denied access attempt
+            from src.core.audit import audit
+
+            audit.log(
+                actor=user.get("username", ""),
+                actor_ip=request.client.host if request.client else "",
+                action=action,
+                resource_id=path,
+                decision="DENY",
+                severity="warning",
+                detail=f"Matched policy: {matched_policy}",
+            )
             return JSONResponse(
                 status_code=403,
                 content={
@@ -163,6 +175,19 @@ class PBACMiddleware(BaseHTTPMiddleware):
                     "message": f"Permission denied: {action}",
                     "matched_policy": matched_policy,
                 },
+            )
+
+        # Audit log: write operations only (don't audit reads to reduce noise)
+        if method in ("POST", "PATCH", "PUT", "DELETE"):
+            from src.core.audit import audit
+
+            audit.log(
+                actor=user.get("username", ""),
+                actor_ip=request.client.host if request.client else "",
+                action=action,
+                resource_id=path,
+                decision="ALLOW",
+                severity="info",
             )
 
         return await call_next(request)
