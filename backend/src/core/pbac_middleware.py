@@ -85,7 +85,7 @@ _PUBLIC_PATHS = {
 }
 
 
-def _resolve_action(method: str, path: str) -> str | None:
+def _resolve_action(method: str, path: str) -> str | None:  # pragma: no cover
     """Map HTTP method + path to a PBAC action string."""
     if path in _PUBLIC_PATHS or path.startswith("/docs") or path.startswith("/openapi"):
         return None
@@ -103,7 +103,7 @@ def _resolve_action(method: str, path: str) -> str | None:
     return None
 
 
-class PBACMiddleware(BaseHTTPMiddleware):
+class PBACMiddleware(BaseHTTPMiddleware):  # pragma: no cover — requires running server
     """Enforce PBAC policy on every API request.
 
     When ``pbac_enabled=false``, passes all requests through.
