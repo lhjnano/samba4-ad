@@ -90,9 +90,22 @@ def verify_credentials(username: str, password: str) -> dict[str, Any] | None:
 
     Returns a user dict on success, ``None`` on failure.
 
-    * mock mode → check ``_MOCK_USERS``
-    * ldap mode → LDAP simple bind
+    Authentication order:
+    1. Local system admin (from config — works regardless of AD)
+    2. mock mode → check ``_MOCK_USERS``
+    3. ldap mode → LDAP simple bind
     """
+    # 1. Local system admin (always checked first)
+    sys_user = settings.system_admin_user
+    sys_pass = settings.system_admin_password.get_secret_value()
+    if sys_pass and username.lower() == sys_user.lower() and password == sys_pass:
+        return {
+            "display_name": "System Administrator",
+            "email": None,
+            "role": "admin",
+            "groups": ["CN=Domain Admins,CN=Users,DC=corp,DC=local"],
+        }
+
     if settings.app_mode == "mock":
         user = _MOCK_USERS.get(username.lower())
         if user and user["password"] == password:

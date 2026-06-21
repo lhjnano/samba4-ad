@@ -79,6 +79,10 @@ class Settings(BaseSettings):
     audit_log_path: str = "/var/log/samba-ad-manager/audit.log"
     audit_retention_days: int = 90
 
+    # --- Local system admin (works regardless of AD/LDAP) ---
+    system_admin_user: str = "administrator"
+    system_admin_password: SecretStr = SecretStr("")
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_cors(cls, v: object) -> object:
