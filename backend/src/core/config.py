@@ -75,6 +75,10 @@ class Settings(BaseSettings):
     pbac_super_admin_group: str = "Domain Admins"
     pbac_default_policy: str = "system/viewer.json"
 
+    # --- Audit logging (always active, independent of PBAC) ---
+    audit_log_path: str = "/var/log/samba-ad-manager/audit.log"
+    audit_retention_days: int = 90
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_cors(cls, v: object) -> object:

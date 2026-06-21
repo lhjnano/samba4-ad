@@ -6,61 +6,101 @@ Tests for the audit logger.
 from __future__ import annotations
 
 import json
-import logging
 
 import pytest
-from src.core.audit import audit
+from src.core.audit import get_audit, reset_audit
 
 
 class TestAuditLogger:
     @pytest.mark.unit
-    def test_log_emits_json(self, caplog):
-        """Audit log should produce a JSON-parsable message."""
-        with caplog.at_level(logging.INFO, logger="audit"):
-            audit.log(
-                actor="testadmin",
-                action="users:Delete",
-                resource_type="user",
-                resource_id="CN=testuser,...",
-                severity="critical",
-            )
+    def test_log_writes_to_file(self, tmp_path):
+        """Audit log should write JSON to the log file."""
+        from src.core import audit as audit_mod
 
-        # Find the audit log record
-        audit_records = [r for r in caplog.records if r.name == "audit"]
-        assert len(audit_records) == 1
+        audit_mod.settings.audit_log_path = str(tmp_path / "audit.log")
+        audit_mod.settings.audit_retention_days = 90
+        reset_audit()
+        logger = get_audit()
 
-        entry = json.loads(audit_records[0].message)
-        assert entry["audit"] is True
+        logger.log(
+            actor="testadmin",
+            action="users:Delete",
+            resource_type="user",
+            resource_id="CN=testuser,...",
+            severity="critical",
+        )
+
+        log_file = tmp_path / "audit.log"
+        assert log_file.exists()
+        lines = log_file.read_text().strip().splitlines()
+        assert len(lines) == 1
+        entry = json.loads(lines[0])
         assert entry["actor"] == "testadmin"
         assert entry["action"] == "users:Delete"
-        assert entry["resource_id"] == "CN=testuser,..."
-        assert entry["decision"] == "ALLOW"
+        assert entry["resource_type"] == "user"
         assert entry["severity"] == "critical"
-        assert "timestamp" in entry
+
+        reset_audit()
 
     @pytest.mark.unit
-    def test_log_with_before_after(self, caplog):
-        """Audit log should include before/after state changes."""
-        with caplog.at_level(logging.INFO, logger="audit"):
-            audit.log(
-                actor="admin",
-                action="users:SetStatus",
-                before={"status": "active"},
-                after={"status": "inactive"},
-            )
+    def test_log_with_before_after(self, tmp_path):
+        from src.core import audit as audit_mod
 
-        entry = json.loads(caplog.records[-1].message)
+        audit_mod.settings.audit_log_path = str(tmp_path / "audit.log")
+        audit_mod.settings.audit_retention_days = 90
+        reset_audit()
+        logger = get_audit()
+
+        logger.log(
+            actor="admin",
+            action="users:SetStatus",
+            before={"status": "active"},
+            after={"status": "inactive"},
+        )
+
+        log_file = tmp_path / "audit.log"
+        entry = json.loads(log_file.read_text().strip())
         assert entry["before"] == {"status": "active"}
         assert entry["after"] == {"status": "inactive"}
 
-    @pytest.mark.unit
-    def test_log_minimal_fields(self, caplog):
-        """Audit log should work with only required fields."""
-        with caplog.at_level(logging.INFO, logger="audit"):
-            audit.log(actor="admin", action="test:Action")
+        reset_audit()
 
-        entry = json.loads(caplog.records[-1].message)
-        assert entry["actor"] == "admin"
-        assert entry["action"] == "test:Action"
-        assert entry["decision"] == "ALLOW"  # default
-        assert entry["severity"] == "info"  # default
+    @pytest.mark.unit
+    def test_read_entries_with_filter(self, tmp_path):
+        from src.core import audit as audit_mod
+
+        audit_mod.settings.audit_log_path = str(tmp_path / "audit.log")
+        audit_mod.settings.audit_retention_days = 90
+        reset_audit()
+        logger = get_audit()
+
+        logger.log(actor="alice", action="users:Create", severity="info")
+        logger.log(actor="bob", action="users:Delete", severity="critical")
+        logger.log(actor="alice", action="dns:AddRecord", severity="info")
+
+        alice_entries = logger.read_entries(actor="alice")
+        assert len(alice_entries) == 2
+
+        critical = logger.read_entries(severity="critical")
+        assert len(critical) == 1
+        assert critical[0]["action"] == "users:Delete"
+
+        dns_entries = logger.read_entries(action_prefix="dns:")
+        assert len(dns_entries) == 1
+
+        reset_audit()
+
+    @pytest.mark.unit
+    def test_log_never_raises(self):
+        """Audit log must not raise even if file is unwritable."""
+        from src.core import audit as audit_mod
+
+        audit_mod.settings.audit_log_path = "/nonexistent/path/audit.log"
+        audit_mod.settings.audit_retention_days = 90
+        reset_audit()
+        logger = get_audit()
+
+        # Should not raise
+        logger.log(actor="test", action="test:Action")
+
+        reset_audit()

@@ -166,3 +166,64 @@ def list_logs(
         page_size=page_size,
         pages=pages,
     )
+
+
+# ── Audit log endpoint (always available, independent of PBAC) ────────
+
+
+class AuditEntry(BaseModel):
+    audit: bool = True
+    timestamp: str
+    actor: str = ""
+    actor_ip: str = ""
+    action: str = ""
+    resource_type: str = ""
+    resource_id: str = ""
+    decision: str = "ALLOW"
+    before: dict | None = None
+    after: dict | None = None
+    severity: str = "info"
+    detail: str = ""
+
+
+class PaginatedAudit(BaseModel):
+    items: list[AuditEntry]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+@router.get("/audit", response_model=PaginatedAudit)
+def list_audit_logs(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    severity: str | None = Query(None),
+    actor: str | None = Query(None),
+    action: str | None = Query(None, description="Action prefix (e.g. 'users:')"),
+    q: str | None = Query(None),
+) -> PaginatedAudit:
+    """List audit log entries from the persistent audit trail."""
+    from src.core.audit import get_audit
+
+    audit_logger = get_audit()
+    total = audit_logger.count_entries(
+        severity=severity, actor=actor, action_prefix=action, q=q
+    )
+    entries = audit_logger.read_entries(
+        limit=page_size,
+        offset=(page - 1) * page_size,
+        severity=severity,
+        actor=actor,
+        action_prefix=action,
+        q=q,
+    )
+    pages = (total + page_size - 1) // page_size if total else 0
+
+    return PaginatedAudit(
+        items=[AuditEntry(**e) for e in entries],
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=pages,
+    )

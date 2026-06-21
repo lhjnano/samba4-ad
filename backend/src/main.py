@@ -122,6 +122,11 @@ from src.core.pbac_middleware import PBACMiddleware  # noqa: E402
 
 app.add_middleware(PBACMiddleware)
 
+# ── Audit middleware (always-on, independent of PBAC) ─────────────────
+from src.core.audit_middleware import AuditMiddleware  # noqa: E402
+
+app.add_middleware(AuditMiddleware)
+
 # ── Routes ────────────────────────────────────────────────────────────
 
 app.include_router(api_router, prefix=settings.api_v1_prefix)
