@@ -187,6 +187,11 @@ async def value_error_handler(_request, exc: ValueError) -> JSONResponse:
     )
 
 
+@app.get("/health", tags=["meta"], summary="Liveness probe")
+def root_health() -> dict[str, str]:
+    return {"status": "ok", "app": settings.app_name, "mode": settings.app_mode}
+
+
 # ── Serve React SPA in production ────────────────────────────────────
 # When ``frontend/dist`` exists (built via ``npm run build``), mount it as
 # static files.  In dev, the Vite dev server (port 5173) proxies API calls.
