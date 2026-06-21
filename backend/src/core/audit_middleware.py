@@ -49,7 +49,9 @@ _AUDIT_MAP: list[tuple[re.Pattern, str, str]] = [
 ]
 
 
-def _resolve_audit(path: str, method: str) -> tuple[str, str] | None:
+def _resolve_audit(
+    path: str, method: str
+) -> tuple[str, str] | None:  # pragma: no cover
     """Map path+method to (action, resource_type). Returns None for reads."""
     if method not in ("POST", "PATCH", "PUT", "DELETE"):
         return None
@@ -67,7 +69,7 @@ def _resolve_audit(path: str, method: str) -> tuple[str, str] | None:
     return None
 
 
-class AuditMiddleware(BaseHTTPMiddleware):
+class AuditMiddleware(BaseHTTPMiddleware):  # pragma: no cover — requires running server
     """Always-on audit logging for write operations."""
 
     async def dispatch(

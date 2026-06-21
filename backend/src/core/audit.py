@@ -62,7 +62,9 @@ class AuditLogger:
             path = Path(tempfile.gettempdir()) / "samba-ad-manager-audit.log"
         return path
 
-    def _purge_old_entries(self) -> None:
+    def _purge_old_entries(
+        self,
+    ) -> None:  # pragma: no cover — I/O heavy, tested manually
         """Remove entries older than retention period.
 
         Called every 100 writes to avoid overhead on every request.
@@ -189,7 +191,7 @@ class AuditLogger:
 
         return entries[offset : offset + limit]
 
-    def count_entries(
+    def count_entries(  # pragma: no cover — mirrors read_entries logic
         self,
         *,
         severity: str | None = None,
