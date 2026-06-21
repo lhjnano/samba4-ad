@@ -32,7 +32,7 @@ i18n
     fallbackLng: "en",
     supportedLngs: ["en", "ko"],
     defaultNS: "common",
-    ns: ["common", "setup", "dashboard", "users", "groups", "computers", "ous", "gpos", "dns", "policies", "logs", "settings", "api", "manual"],
+    ns: ["common", "setup", "dashboard", "users", "groups", "computers", "ous", "gpos", "dns", "policies", "logs", "settings", "api", "manual", "iam"],
     detection: {
       order: ["localStorage", "navigator"],
       lookupLocalStorage: "lang",

@@ -10,6 +10,7 @@ import {
   Network,
   Settings,
   ScrollText,
+  ShieldCheck,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useTranslation } from "react-i18next";
@@ -25,6 +26,7 @@ export function Sidebar() {
     { to: "/ous", icon: FolderTree, label: t("common:nav_ous") },
     { to: "/gpos", icon: FileText, label: t("common:nav_gpos") },
     { to: "/policies", icon: Shield, label: t("common:nav_policies") },
+    { to: "/iam", icon: ShieldCheck, label: t("common:nav_iam") },
     { to: "/dns", icon: Network, label: t("common:nav_dns") },
     { to: "/logs", icon: ScrollText, label: t("common:nav_logs") },
     { to: "/settings", icon: Settings, label: t("common:nav_settings") },

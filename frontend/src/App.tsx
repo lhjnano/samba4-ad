@@ -16,6 +16,7 @@ import { OUs } from "./pages/OUs";
 import { GPOs } from "./pages/GPOs";
 import { DNS } from "./pages/DNS";
 import { Policies } from "./pages/Policies";
+import { IAM } from "./pages/IAM";
 import { Logs } from "./pages/Logs";
 import { Settings } from "./pages/Settings";
 
@@ -58,6 +59,7 @@ function AppRoutes() {
         <Route path="/gpos" element={<GPOs />} />
         <Route path="/dns" element={<DNS />} />
         <Route path="/policies" element={<Policies />} />
+        <Route path="/iam" element={<IAM />} />
         <Route path="/logs" element={<Logs />} />
         <Route path="/settings" element={<Settings />} />
         <Route
