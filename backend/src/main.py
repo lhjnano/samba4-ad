@@ -17,6 +17,8 @@ the public routes listed in ``_PUBLIC_PREFIXES``.
 
 from __future__ import annotations
 
+import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -31,6 +33,31 @@ from src.core.config import settings
 from src.models.common import ErrorDetail
 from src.services.directory import DirectoryError
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Startup validation and shutdown hooks."""
+    startup_logger = logging.getLogger("startup")
+
+    sys_user = settings.system_admin_user
+    sys_pass = settings.system_admin_password.get_secret_value()
+
+    if not sys_pass:
+        startup_logger.warning(
+            "SYSTEM_ADMIN_PASSWORD is not set — "
+            "local admin login is disabled. "
+            "Set it in /etc/samba-ad-manager/env"
+        )
+    elif sys_user.lower() == "root":
+        startup_logger.warning(
+            "SYSTEM_ADMIN_USER is 'root' — "
+            "using root for web login is not recommended. "
+            "Create a dedicated admin user instead."
+        )
+
+    yield
+
+
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
@@ -40,6 +67,7 @@ app = FastAPI(
         "per the project governance (DESIGN-INTEGRATION.md)."
     ),
     default_response_class=JSONResponse,
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -157,11 +185,6 @@ async def value_error_handler(_request, exc: ValueError) -> JSONResponse:
             message=str(exc) or "Invalid argument",
         ).model_dump(),
     )
-
-
-@app.get("/health", tags=["meta"], summary="Liveness probe")
-def root_health() -> dict[str, str]:
-    return {"status": "ok", "app": settings.app_name, "mode": settings.app_mode}
 
 
 # ── Serve React SPA in production ────────────────────────────────────
