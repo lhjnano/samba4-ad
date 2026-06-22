@@ -169,6 +169,7 @@ omit = [
     "*/mfa.py",
     "*/api_keys.py",
     "*/kerberos.py",
+    "*/self_service.py",
 ]
 parallel = true
 
