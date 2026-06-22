@@ -19,6 +19,12 @@ from src.services.directory import set_backend
 from src.services.mock import MockDirectory
 
 
+@pytest.fixture(scope="module")
+def openapi_schema() -> dict:
+    """Get the OpenAPI schema once for all contract tests."""
+    return app.openapi()
+
+
 @pytest.fixture()
 def settings() -> Settings:
     return Settings(app_mode="mock")
