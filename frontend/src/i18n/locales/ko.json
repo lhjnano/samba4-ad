@@ -616,7 +616,17 @@
     "toast_connection_saved": "연결 설정이 저장되었습니다 (로컬)",
     "toast_config_exported": "구성이 내보내졌습니다",
     "toast_export_failed": "내보내기에 실패했습니다",
-    "toast_import_unsupported": "구성 가져오기는 향후 지원될 예정입니다"
+    "toast_import_unsupported": "구성 가져오기는 향후 지원될 예정입니다",
+    "section_change_password": "비밀번호 변경",
+    "section_change_password_sub": "계정 비밀번호를 변경합니다",
+    "label_current_password": "현재 비밀번호",
+    "label_new_password": "새 비밀번호",
+    "label_confirm_password": "새 비밀번호 확인",
+    "password_requirements": "대문자, 소문자, 숫자 포함 8자 이상",
+    "password_mismatch": "비밀번호가 일치하지 않습니다",
+    "btn_change_password": "비밀번호 변경",
+    "toast_password_changed": "비밀번호가 변경되었습니다",
+    "toast_password_failed": "비밀번호 변경에 실패했습니다"
   },
   "api": {
     "error_request_failed": "요청 실패",

@@ -18,6 +18,8 @@ import {
   HardDrive,
   ShieldCheck,
   Languages,
+  KeyRound,
+  Lock,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useTranslation } from "react-i18next";
@@ -347,6 +349,11 @@ export function Settings() {
             </form>
           </SectionCard>
 
+          {/* ── Change Password ────────────────────── */}
+          <ChangePasswordSection
+            onToast={(msg, type) => setToast({ type, message: msg })}
+          />
+
           {/* ── Backup / Restore ───────────────────── */}
           <SectionCard
             icon={ShieldCheck}
@@ -576,5 +583,108 @@ function ActionTile({
         <Icon size={15} /> {buttonLabel}
       </button>
     </div>
+  );
+}
+
+// ── Change Password Section ────────────────────────
+function ChangePasswordSection({
+  onToast,
+}: {
+  onToast: (msg: string, type: "success" | "error") => void;
+}) {
+  const { t } = useTranslation();
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const pwValid =
+    newPw.length >= 8 &&
+    /[A-Z]/.test(newPw) &&
+    /[a-z]/.test(newPw) &&
+    /[0-9]/.test(newPw);
+  const pwMatch = newPw === confirmPw && newPw.length > 0;
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!currentPw || !pwValid || !pwMatch) return;
+    setSaving(true);
+    try {
+      await api.post(`${API_BASE}/self-service/change-password`, {
+        current_password: currentPw,
+        new_password: newPw,
+      });
+      onToast(t("settings:toast_password_changed"), "success");
+      setCurrentPw("");
+      setNewPw("");
+      setConfirmPw("");
+    } catch (err) {
+      const msg = (err as { detail?: string })?.detail || t("settings:toast_password_failed");
+      onToast(msg, "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <SectionCard
+      icon={KeyRound}
+      iconTone="green"
+      title={t("settings:section_change_password")}
+      subtitle={t("settings:section_change_password_sub")}
+    >
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div>
+          <label className="label">{t("settings:label_current_password")}</label>
+          <input
+            type="password"
+            className="input"
+            value={currentPw}
+            onChange={(e) => setCurrentPw(e.target.value)}
+            autoComplete="current-password"
+          />
+        </div>
+        <div>
+          <label className="label">{t("settings:label_new_password")}</label>
+          <input
+            type="password"
+            className="input"
+            value={newPw}
+            onChange={(e) => setNewPw(e.target.value)}
+            autoComplete="new-password"
+          />
+          {newPw.length > 0 && !pwValid && (
+            <p className="mt-1 text-xs text-yellow">
+              {t("settings:password_requirements")}
+            </p>
+          )}
+        </div>
+        <div>
+          <label className="label">{t("settings:label_confirm_password")}</label>
+          <input
+            type="password"
+            className="input"
+            value={confirmPw}
+            onChange={(e) => setConfirmPw(e.target.value)}
+            autoComplete="new-password"
+          />
+          {confirmPw.length > 0 && !pwMatch && (
+            <p className="mt-1 text-xs text-red">{t("settings:password_mismatch")}</p>
+          )}
+        </div>
+        <button
+          type="submit"
+          disabled={saving || !currentPw || !pwValid || !pwMatch}
+          className="btn-primary w-full justify-center disabled:opacity-50"
+        >
+          {saving ? (
+            <Loader2 size={15} className="animate-spin" />
+          ) : (
+            <Lock size={15} />
+          )}
+          {t("settings:btn_change_password")}
+        </button>
+      </form>
+    </SectionCard>
   );
 }

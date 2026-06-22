@@ -616,7 +616,17 @@
     "toast_connection_saved": "Connection settings saved (local)",
     "toast_config_exported": "Configuration has been exported",
     "toast_export_failed": "Failed to export",
-    "toast_import_unsupported": "Configuration import will be supported in the future"
+    "toast_import_unsupported": "Configuration import will be supported in the future",
+    "section_change_password": "Change Password",
+    "section_change_password_sub": "Update your account password",
+    "label_current_password": "Current Password",
+    "label_new_password": "New Password",
+    "label_confirm_password": "Confirm New Password",
+    "password_requirements": "Min 8 chars with uppercase, lowercase, and number",
+    "password_mismatch": "Passwords do not match",
+    "btn_change_password": "Change Password",
+    "toast_password_changed": "Password changed successfully",
+    "toast_password_failed": "Failed to change password"
   },
   "api": {
     "error_request_failed": "Request failed",
