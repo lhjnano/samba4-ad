@@ -354,6 +354,11 @@ export function Settings() {
             onToast={(msg, type) => setToast({ type, message: msg })}
           />
 
+          {/* ── MFA / 2FA ─────────────────────────── */}
+          <MfaSection
+            onToast={(msg, type) => setToast({ type, message: msg })}
+          />
+
           {/* ── Backup / Restore ───────────────────── */}
           <SectionCard
             icon={ShieldCheck}
@@ -686,5 +691,209 @@ function ChangePasswordSection({
         </button>
       </form>
     </SectionCard>
+  );
+}
+
+// ── MFA Section ────────────────────────────────────
+function MfaSection({
+  onToast,
+}: {
+  onToast: (msg: string, type: "success" | "error") => void;
+}) {
+  const { t } = useTranslation();
+  const [enrolled, setEnrolled] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [showEnroll, setShowEnroll] = useState(false);
+  const [secret, setSecret] = useState("");
+  const [qrUrl, setQrUrl] = useState("");
+  const [enrollCode, setEnrollCode] = useState("");
+  const [enrolling, setEnrolling] = useState(false);
+  const [showDisableConfirm, setShowDisableConfirm] = useState(false);
+  const [disabling, setDisabling] = useState(false);
+
+  const fetchStatus = useCallback(async () => {
+    try {
+      const { data } = await api.get<{ enabled: boolean; enrolled: boolean }>(
+        `${API_BASE}/auth/mfa/status`,
+      );
+      setEnrolled(data.enrolled);
+    } catch {
+      // MFA not configured
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStatus();
+  }, [fetchStatus]);
+
+  async function startEnroll() {
+    try {
+      const { data } = await api.post<{ secret: string; qr_url: string }>(
+        `${API_BASE}/auth/mfa/setup`,
+      );
+      setSecret(data.secret);
+      setQrUrl(data.qr_url);
+      setShowEnroll(true);
+      setEnrollCode("");
+    } catch {
+      onToast(t("settings:mfa_enroll_failed"), "error");
+    }
+  }
+
+  async function confirmEnroll(e: React.FormEvent) {
+    e.preventDefault();
+    if (enrollCode.length !== 6) return;
+    setEnrolling(true);
+    try {
+      await api.post(`${API_BASE}/auth/mfa/enroll`, {
+        secret,
+        code: enrollCode,
+      });
+      setEnrolled(true);
+      setShowEnroll(false);
+      onToast(t("settings:mfa_enroll_success"), "success");
+    } catch {
+      onToast(t("settings:mfa_enroll_failed"), "error");
+    } finally {
+      setEnrolling(false);
+    }
+  }
+
+  async function handleDisable() {
+    setDisabling(true);
+    try {
+      await api.delete(`${API_BASE}/auth/mfa/enroll`);
+      setEnrolled(false);
+      setShowDisableConfirm(false);
+      onToast(t("settings:mfa_disable_success"), "success");
+    } catch {
+      onToast(t("settings:mfa_disable_failed"), "error");
+    } finally {
+      setDisabling(false);
+    }
+  }
+
+  if (loading) return null;
+
+  return (
+    <>
+      <SectionCard
+        icon={ShieldCheck}
+        iconTone="purple"
+        title={t("settings:section_mfa")}
+        subtitle={t("settings:section_mfa_sub")}
+      >
+        {enrolled ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-full bg-green/15 px-2.5 py-0.5 text-xs font-medium text-green">
+                <ShieldCheck size={10} /> {t("settings:mfa_enabled")}
+              </span>
+            </div>
+            {showDisableConfirm ? (
+              <div className="rounded-lg border border-red/30 bg-red/5 p-3">
+                <p className="mb-2 text-sm text-red">{t("settings:mfa_confirm_disable")}</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleDisable}
+                    disabled={disabling}
+                    className="btn-danger flex-1 justify-center text-sm"
+                  >
+                    {disabling ? <Loader2 size={14} className="animate-spin" /> : null}
+                    {t("settings:mfa_disable")}
+                  </button>
+                  <button
+                    onClick={() => setShowDisableConfirm(false)}
+                    className="btn-outline flex-1 justify-center text-sm"
+                  >
+                    {t("common:cancel")}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowDisableConfirm(true)}
+                className="btn-danger w-full justify-center text-sm"
+              >
+                {t("settings:mfa_disable")}
+              </button>
+            )}
+          </div>
+        ) : showEnroll ? (
+          <form onSubmit={confirmEnroll} className="space-y-3">
+            <div className="text-center">
+              <img
+                src={qrUrl}
+                alt="QR Code"
+                className="mx-auto h-40 w-40 rounded-lg border border-border"
+                style={{ imageRendering: "pixelated" }}
+              />
+              <p className="mt-2 text-xs text-secondary">{t("settings:mfa_scan_qr")}</p>
+            </div>
+            <div>
+              <label className="label text-xs">{t("settings:mfa_secret_key")}</label>
+              <div className="flex gap-1">
+                <code className="flex-1 rounded bg-input px-2 py-1.5 font-mono text-xs text-green">
+                  {secret}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard?.writeText(secret);
+                  }}
+                  className="btn-outline px-2 text-xs"
+                >
+                  {t("settings:mfa_copy")}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="label">{t("settings:mfa_enter_code_enroll")}</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                className="input text-center font-mono text-lg tracking-widest"
+                value={enrollCode}
+                onChange={(e) => setEnrollCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                autoFocus
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={enrolling || enrollCode.length !== 6}
+              className="btn-primary w-full justify-center text-sm disabled:opacity-50"
+            >
+              {enrolling ? <Loader2 size={14} className="animate-spin" /> : null}
+              {t("settings:mfa_enable_btn")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowEnroll(false)}
+              className="w-full text-center text-xs text-muted hover:text-secondary"
+            >
+              {t("settings:mfa_skip")}
+            </button>
+          </form>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-full bg-muted/15 px-2.5 py-0.5 text-xs font-medium text-muted">
+                {t("settings:mfa_not_enabled")}
+              </span>
+            </div>
+            <p className="text-xs text-secondary">{t("settings:section_mfa_sub")}</p>
+            <button
+              onClick={startEnroll}
+              className="btn-primary w-full justify-center text-sm"
+            >
+              <ShieldCheck size={14} /> {t("settings:mfa_enable")}
+            </button>
+          </div>
+        )}
+      </SectionCard>
+    </>
   );
 }

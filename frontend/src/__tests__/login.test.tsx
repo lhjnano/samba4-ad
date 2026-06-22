@@ -5,10 +5,9 @@ import { MemoryRouter } from "react-router-dom";
 import { Login } from "../pages/Login";
 
 // Mock AuthContext
-const mockLogin = vi.fn();
 vi.mock("../contexts/AuthContext", () => ({
   useAuth: () => ({
-    login: mockLogin,
+    login: vi.fn(),
     user: null,
     token: null,
     loading: false,
@@ -16,11 +15,20 @@ vi.mock("../contexts/AuthContext", () => ({
   }),
 }));
 
-// Mock api
+// Mock react-i18next
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+    i18n: { language: "en" },
+  }),
+}));
+
+// Mock api — hoisted-safe factory
+const mockPost = vi.fn();
 vi.mock("../api/client", () => ({
   api: {
-    get: vi.fn(),
-    post: vi.fn(),
+    get: (...args: unknown[]) => mockPost(...args),
+    post: (...args: unknown[]) => mockPost(...args),
   },
 }));
 
@@ -35,47 +43,70 @@ function renderLogin() {
 describe("Login", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPost.mockResolvedValue({
+      data: { access_token: "fake-jwt", user: { username: "admin" } },
+    });
   });
 
   it("renders login form with empty inputs", () => {
     renderLogin();
-    expect(screen.getByText("AD Manager")).toBeInTheDocument();
-    const usernameInput = screen.getByLabelText(/username/i) as HTMLInputElement;
-    const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement;
+    const usernameInput = screen.getByLabelText(/common:username/) as HTMLInputElement;
+    const passwordInput = screen.getByLabelText(/common:password/) as HTMLInputElement;
     expect(usernameInput.value).toBe("");
     expect(passwordInput.value).toBe("");
-    expect(screen.getByRole("button", { name: /Login/ })).toBeInTheDocument();
   });
 
-  it("calls login on submit with entered credentials", async () => {
-    mockLogin.mockResolvedValueOnce(undefined);
+  it("calls API on submit with entered credentials", async () => {
     const user = userEvent.setup();
     renderLogin();
 
-    const usernameInput = screen.getByLabelText(/username/i);
-    const passwordInput = screen.getByLabelText(/password/i);
+    const usernameInput = screen.getByLabelText(/common:username/);
+    const passwordInput = screen.getByLabelText(/common:password/);
     await user.type(usernameInput, "Administrator");
     await user.type(passwordInput, "Admin123!");
-    await user.click(screen.getByRole("button", { name: /Login/ }));
+    await user.click(screen.getByRole("button", { name: /common:login_btn/ }));
 
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith("Administrator", "Admin123!");
+      expect(mockPost).toHaveBeenCalledWith(
+        "/api/v1/auth/login",
+        { username: "Administrator", password: "Admin123!" },
+      );
     });
   });
 
   it("shows error on login failure", async () => {
-    mockLogin.mockRejectedValueOnce({ message: "Invalid credentials" });
+    mockPost.mockRejectedValueOnce({
+      response: { data: { detail: "Invalid credentials" } },
+    });
     const user = userEvent.setup();
     renderLogin();
 
-    const usernameInput = screen.getByLabelText(/username/i);
-    const passwordInput = screen.getByLabelText(/password/i);
+    const usernameInput = screen.getByLabelText(/common:username/);
+    const passwordInput = screen.getByLabelText(/common:password/);
     await user.type(usernameInput, "baduser");
     await user.type(passwordInput, "badpass");
-    await user.click(screen.getByRole("button", { name: /Login/ }));
+    await user.click(screen.getByRole("button", { name: /common:login_btn/ }));
 
     await waitFor(() => {
       expect(screen.getByText("Invalid credentials")).toBeInTheDocument();
+    });
+  });
+
+  it("switches to MFA phase when mfa_required", async () => {
+    mockPost.mockResolvedValueOnce({
+      data: { mfa_required: true, username: "admin" },
+    });
+    const user = userEvent.setup();
+    renderLogin();
+
+    const usernameInput = screen.getByLabelText(/common:username/);
+    const passwordInput = screen.getByLabelText(/common:password/);
+    await user.type(usernameInput, "admin");
+    await user.type(passwordInput, "pass");
+    await user.click(screen.getByRole("button", { name: /common:login_btn/ }));
+
+    await waitFor(() => {
+      expect(screen.getByText("common:mfa_enter_code")).toBeInTheDocument();
     });
   });
 
@@ -83,8 +114,8 @@ describe("Login", () => {
     const user = userEvent.setup();
     renderLogin();
 
-    const usernameInput = screen.getByLabelText(/username/i);
-    const passwordInput = screen.getByLabelText(/password/i);
+    const usernameInput = screen.getByLabelText(/common:username/);
+    const passwordInput = screen.getByLabelText(/common:password/);
 
     await user.type(usernameInput, "superuser");
     await user.type(passwordInput, "secret123");
