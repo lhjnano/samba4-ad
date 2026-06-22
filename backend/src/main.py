@@ -148,6 +148,31 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 }
                 return await call_next(request)
 
+        # 3. Kerberos Negotiate (SPNEGO)
+        if auth_header.startswith("Negotiate "):
+            from src.core.kerberos import try_negotiate_auth
+
+            user_info = try_negotiate_auth(auth_header[10:])
+            if user_info:
+                # Issue JWT for the Kerberos-authenticated user
+                from src.core.auth import create_access_token
+
+                token = create_access_token(
+                    {
+                        "sub": user_info["display_name"],
+                        "display_name": user_info["display_name"],
+                        "role": user_info.get("role", "admin"),
+                        "groups": user_info.get("groups", []),
+                        "kerberos": True,
+                    }
+                )
+                request.state.user = {
+                    "username": user_info["display_name"],
+                    "groups": user_info.get("groups", []),
+                    "role": user_info.get("role", "admin"),
+                }
+                return await call_next(request)
+
         return JSONResponse(
             status_code=401,
             content=ErrorDetail(

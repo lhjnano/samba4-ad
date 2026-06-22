@@ -89,6 +89,11 @@ class Settings(BaseSettings):
     mfa_issuer: str = "Samba AD Manager"
     mfa_ldap_attr: str = "extensionAttribute1"
 
+    # --- Kerberos SSO (SPNEGO) ---
+    kerberos_enabled: bool = False
+    kerberos_keytab: str = "/etc/krb5.keytab"
+    kerberos_spn: str = ""
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_cors(cls, v: object) -> object:

@@ -21,6 +21,7 @@ from src.api import (
     logs,
     ou,
     policies,
+    self_service,
     settings,
     setup,
     stats,
@@ -45,3 +46,4 @@ api_router.include_router(dns.router)
 api_router.include_router(logs.router)
 api_router.include_router(policies.router)
 api_router.include_router(iam.router)
+api_router.include_router(self_service.router)
