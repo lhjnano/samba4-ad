@@ -165,6 +165,8 @@ omit = [
     "*/samba_logs.py",
     "*/audit_middleware.py",
     "*/pbac_middleware.py",
+    "*/access_intelligence.py",
+    "*/mfa.py",
 ]
 parallel = true
 

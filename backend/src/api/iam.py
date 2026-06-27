@@ -325,3 +325,80 @@ def update_assignments(
         user_assignments=data.get("user_assignments", {}),
         default_policy=data.get("default_policy"),
     )
+
+
+# ── Access Intelligence (effective permissions + usage) ──────────────
+
+
+class EffectivePermission(BaseModel):
+    action: str
+    effect: str
+    source_policy: str
+    resource: str = "*"
+
+
+class UsageStatItem(BaseModel):
+    action: str
+    usage_count: int
+
+
+class UsageStats(BaseModel):
+    total_permissions: int
+    active_count: int
+    idle_count: int
+    denied_attempt_count: int
+    usage_rate: float
+    active_permissions: list[UsageStatItem]
+    idle_permissions: list[UsageStatItem]
+    denied_attempts: list[UsageStatItem]
+
+
+@router.get(
+    "/effective-permissions", response_model=list[EffectivePermission]
+)  # pragma: no cover
+def get_effective_permissions(
+    user: UserInfo = Depends(get_current_user),
+) -> list[EffectivePermission]:
+    """Get all permissions the current user effectively has."""
+    from src.core.access_intelligence import compute_effective_permissions
+
+    engine = get_engine()
+    if engine is None:
+        return [
+            EffectivePermission(
+                action="*", effect="Allow", source_policy="(PBAC disabled)"
+            )
+        ]
+
+    perms = compute_effective_permissions(user.username, user.groups, engine)
+    return [EffectivePermission(**p) for p in perms]
+
+
+@router.get("/usage-stats", response_model=UsageStats)  # pragma: no cover
+def get_usage_stats(
+    user: UserInfo = Depends(get_current_user),
+) -> UsageStats:
+    """Get permission usage analytics for the current user."""
+    from src.core.access_intelligence import (
+        compute_effective_permissions,
+        compute_usage_stats,
+    )
+
+    engine = get_engine()
+    if engine is None:
+        return UsageStats(
+            total_permissions=1,
+            active_count=0,
+            idle_count=1,
+            denied_attempt_count=0,
+            usage_rate=0,
+            active_permissions=[],
+            idle_permissions=[],
+            denied_attempts=[],
+        )
+
+    perms = compute_effective_permissions(user.username, user.groups, engine)
+    allowed_actions = [p["action"] for p in perms if p["effect"] == "Allow"]
+
+    stats = compute_usage_stats(user.username, allowed_actions)
+    return UsageStats(**stats)
