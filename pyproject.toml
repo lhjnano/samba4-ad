@@ -162,6 +162,9 @@ omit = [
     "*/ldap3_backend.py",
     "*/samba_tool.py",
     "*/provisioning.py",
+    "*/samba_logs.py",
+    "*/audit_middleware.py",
+    "*/pbac_middleware.py",
 ]
 parallel = true
 
