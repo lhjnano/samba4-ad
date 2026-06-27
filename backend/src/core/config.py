@@ -83,6 +83,12 @@ class Settings(BaseSettings):
     system_admin_user: str = "administrator"
     system_admin_password: SecretStr = SecretStr("")
 
+    # --- MFA (TOTP) ---
+    mfa_enabled: bool = False
+    mfa_required: bool = False
+    mfa_issuer: str = "Samba AD Manager"
+    mfa_ldap_attr: str = "extensionAttribute1"
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_cors(cls, v: object) -> object:

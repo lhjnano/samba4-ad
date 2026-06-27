@@ -167,9 +167,8 @@ class TestContractAuth:
 
     @pytest.mark.unit
     def test_token_response_schema(self, openapi_schema: dict) -> None:
-        """TokenResponse must have access_token + user."""
+        """Login response must have access_token or mfa_required."""
         schemas = openapi_schema["components"]["schemas"]
-        assert "TokenResponse" in schemas
-        props = schemas["TokenResponse"]["properties"]
-        assert "access_token" in props
-        assert "user" in props
+        assert "LoginOrMfaResponse" in schemas, "Missing LoginOrMfaResponse schema"
+        props = schemas["LoginOrMfaResponse"]["properties"]
+        assert "access_token" in props or "mfa_required" in props
