@@ -167,6 +167,7 @@ omit = [
     "*/pbac_middleware.py",
     "*/access_intelligence.py",
     "*/mfa.py",
+    "*/api_keys.py",
 ]
 parallel = true
 

@@ -117,8 +117,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if any(path.startswith(p) for p in _PUBLIC_PREFIXES):
             return await call_next(request)
 
-        # Protected API route — require valid JWT
+        # Protected API route — check JWT or API Key
         auth_header = request.headers.get("Authorization", "")
+
+        # 1. JWT Bearer token
         if auth_header.startswith("Bearer "):
             token = auth_header[7:]
             try:
@@ -132,6 +134,19 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 return await call_next(request)
             except HTTPException:
                 pass  # invalid token → fall through to 401
+
+        # 2. API Key
+        if auth_header.startswith("Api-Key "):
+            from src.core.api_keys import verify_api_key
+
+            key_info = verify_api_key(auth_header[8:])
+            if key_info:
+                request.state.user = {
+                    "username": key_info.get("name", "api-key"),
+                    "groups": [],
+                    "role": "service",
+                }
+                return await call_next(request)
 
         return JSONResponse(
             status_code=401,

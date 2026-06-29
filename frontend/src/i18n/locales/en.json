@@ -47,7 +47,8 @@
     "login_subtitle": "Active Directory domain management",
     "default_account_hint": "Default account: {{creds}} (mock mode)",
     "edit": "Edit",
-    "nav_iam": "IAM"
+    "nav_iam": "IAM",
+    "close": "Close"
   },
   "setup": {
     "title_app": "AD Manager Setup",
@@ -739,6 +740,33 @@
     "error_path_format": "Path must start with custom/ and end with .json",
     "error_no_statements": "At least one statement is required",
     "error_load_policy": "Failed to load policy detail",
-    "btn_add": "Add"
+    "btn_add": "Add",
+    "tab_api_keys": "API Keys",
+    "tab_usage": "Usage",
+    "btn_create_key": "Create Key",
+    "key_created_warning": "Copy this key now — it will not be shown again",
+    "key_name_placeholder": "Key name (e.g. Monitoring Service)",
+    "empty_keys": "No API keys",
+    "empty_keys_desc": "Create keys for service-to-service authentication",
+    "col_key_name": "Name",
+    "col_created_by": "Created By",
+    "col_created": "Created",
+    "col_last_used": "Last Used",
+    "col_usage": "Usage",
+    "revoked": "Revoked",
+    "toast_key_created": "API key created",
+    "toast_key_revoked": "API key revoked",
+    "toast_key_failed": "Failed to manage key",
+    "error_load_keys": "Failed to load API keys",
+    "empty_usage": "No usage data",
+    "empty_usage_desc": "PBAC may be disabled or no audit data available",
+    "stat_total_perms": "Total Permissions",
+    "stat_active": "Active",
+    "stat_idle": "Idle",
+    "stat_usage_rate": "Usage Rate",
+    "idle_permissions": "Idle Permissions (consider revoking)",
+    "denied_attempts": "Denied Attempts",
+    "active_permissions": "Active Permissions",
+    "never_used": "Never used"
   }
 }

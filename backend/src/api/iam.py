@@ -402,3 +402,91 @@ def get_usage_stats(
 
     stats = compute_usage_stats(user.username, allowed_actions)
     return UsageStats(**stats)
+
+
+# ── API Key Management ───────────────────────────────────────────────
+
+
+class ApiKeyCreate(BaseModel):
+    name: str
+    scopes: list[str] = Field(default_factory=list)
+    expires_at: str | None = None
+
+
+class ApiKeyInfo(BaseModel):
+    id: str
+    name: str
+    scopes: list[str]
+    created_by: str
+    created_at: str
+    expires_at: str | None = None
+    last_used_at: str | None = None
+    revoked: bool = False
+    usage_count: int = 0
+
+
+class ApiKeyCreatedResponse(BaseModel):
+    id: str
+    key: str
+    name: str
+    message: str = "Save this key — it will not be shown again"
+
+
+@router.get("/api-keys", response_model=list[ApiKeyInfo])
+def list_api_keys(
+    user: UserInfo = Depends(get_current_user),
+) -> list[ApiKeyInfo]:
+    """List all API keys."""
+    from src.core.api_keys import list_keys
+
+    return [ApiKeyInfo(**k) for k in list_keys()]
+
+
+@router.post("/api-keys", response_model=ApiKeyCreatedResponse, status_code=201)
+def create_api_key(
+    payload: ApiKeyCreate,
+    user: UserInfo = Depends(get_current_user),
+) -> ApiKeyCreatedResponse:
+    """Create a new API key. The raw key is only returned once."""
+    from src.core.api_keys import create_key
+
+    key_id, raw_key = create_key(
+        name=payload.name,
+        created_by=user.username,
+        scopes=payload.scopes,
+        expires_at=payload.expires_at,
+    )
+
+    from src.core.audit import get_audit
+
+    get_audit().log(
+        actor=user.username,
+        action="iam:CreateApiKey",
+        resource_type="api_key",
+        resource_id=key_id,
+        severity="warning",
+    )
+
+    return ApiKeyCreatedResponse(id=key_id, key=raw_key, name=payload.name)
+
+
+@router.delete("/api-keys/{key_id}", status_code=204)
+def revoke_api_key(
+    key_id: str,
+    user: UserInfo = Depends(get_current_user),
+) -> None:
+    """Revoke an API key."""
+    from src.core.api_keys import revoke_key
+
+    if not revoke_key(key_id):
+        raise HTTPException(404, f"API key not found: {key_id}")
+
+    from src.core.audit import get_audit
+
+    get_audit().log(
+        actor=user.username,
+        action="iam:RevokeApiKey",
+        resource_type="api_key",
+        resource_id=key_id,
+        severity="warning",
+    )

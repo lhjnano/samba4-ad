@@ -16,6 +16,8 @@ import {
   Save,
   Terminal,
   X,
+  Key,
+  Activity,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { api } from "@/api/client";
@@ -26,7 +28,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 
 const API_BASE = "/api/v1";
 type Toast = { type: "success" | "error"; message: string } | null;
-type Tab = "policies" | "assignments" | "audit";
+type Tab = "policies" | "assignments" | "audit" | "apikeys" | "usage";
 
 interface PolicySummary {
   path: string;
@@ -92,6 +94,8 @@ export function IAM() {
         <TabButton active={activeTab === "policies"} onClick={() => setActiveTab("policies")} icon={Shield} label={t("iam:tab_policies")} />
         <TabButton active={activeTab === "assignments"} onClick={() => setActiveTab("assignments")} icon={Link2} label={t("iam:tab_assignments")} />
         <TabButton active={activeTab === "audit"} onClick={() => setActiveTab("audit")} icon={ScrollText} label={t("iam:tab_audit")} />
+        <TabButton active={activeTab === "apikeys"} onClick={() => setActiveTab("apikeys")} icon={Key} label={t("iam:tab_api_keys")} />
+        <TabButton active={activeTab === "usage"} onClick={() => setActiveTab("usage")} icon={Activity} label={t("iam:tab_usage")} />
       </div>
 
       {activeTab === "policies" && (
@@ -105,6 +109,12 @@ export function IAM() {
         />
       )}
       {activeTab === "audit" && <AuditTab />}
+      {activeTab === "apikeys" && (
+        <ApiKeysTab
+          onToast={(m) => setToast({ type: m.includes("error") || m.includes("fail") ? "error" : "success", message: m })}
+        />
+      )}
+      {activeTab === "usage" && <UsageTab />}
 
       {toast && (
         <div className={clsx(
@@ -777,6 +787,229 @@ function AuditTab() {
           </div>
           <Pagination page={page} totalPages={pages} onPageChange={(p) => setPage(p)} />
         </>
+      )}
+    </div>
+  );
+}
+
+// ── API Keys Tab ────────────────────────────────────
+
+interface ApiKeyInfo {
+  id: string;
+  name: string;
+  scopes: string[];
+  created_by: string;
+  created_at: string;
+  expires_at: string | null;
+  last_used_at: string | null;
+  revoked: boolean;
+  usage_count: number;
+}
+
+function ApiKeysTab({ onToast }: { onToast: (msg: string) => void }) {
+  const { t } = useTranslation();
+  const [keys, setKeys] = useState<ApiKeyInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newKey, setNewKey] = useState<string | null>(null);
+
+  const fetchKeys = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.get<ApiKeyInfo[]>(`${API_BASE}/iam/api-keys`);
+      setKeys(data);
+    } catch { onToast(t("iam:error_load_keys")); }
+    finally { setLoading(false); }
+  }, [t, onToast]);
+
+  useEffect(() => { fetchKeys(); }, [fetchKeys]);
+
+  async function handleCreate() {
+    if (!newName.trim()) return;
+    try {
+      const { data } = await api.post<{ id: string; key: string; name: string }>(`${API_BASE}/iam/api-keys`, { name: newName.trim() });
+      setNewKey(data.key);
+      setNewName("");
+      setShowCreate(false);
+      fetchKeys();
+      onToast(t("iam:toast_key_created"));
+    } catch { onToast(t("iam:toast_key_failed")); }
+  }
+
+  async function handleRevoke(id: string) {
+    try {
+      await api.delete(`${API_BASE}/iam/api-keys/${id}`);
+      fetchKeys();
+      onToast(t("iam:toast_key_revoked"));
+    } catch { onToast(t("iam:toast_key_failed")); }
+  }
+
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-blue" size={24} /></div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <button onClick={() => setShowCreate(!showCreate)} className="btn-primary text-sm">
+          <Plus size={14} /> {t("iam:btn_create_key")}
+        </button>
+      </div>
+
+      {/* New key created — show once */}
+      {newKey && (
+        <div className="rounded-lg border border-yellow/30 bg-yellow/5 p-4">
+          <p className="mb-2 text-sm text-yellow">{t("iam:key_created_warning")}</p>
+          <code className="block rounded bg-input p-3 font-mono text-xs text-green break-all">{newKey}</code>
+          <button onClick={() => setNewKey(null)} className="mt-2 text-xs text-blue hover:underline">{t("common:close")}</button>
+        </div>
+      )}
+
+      {/* Create form */}
+      {showCreate && (
+        <div className="flex gap-2 rounded-lg border border-border bg-input p-4">
+          <input className="input flex-1 text-sm" placeholder={t("iam:key_name_placeholder")} value={newName}
+            onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleCreate()} />
+          <button onClick={handleCreate} className="btn-primary text-sm">{t("common:create")}</button>
+          <button onClick={() => setShowCreate(false)} className="btn-outline text-sm">{t("common:cancel")}</button>
+        </div>
+      )}
+
+      {/* Keys table */}
+      {keys.length === 0 ? (
+        <EmptyState icon={Key} title={t("iam:empty_keys")} description={t("iam:empty_keys_desc")} />
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-xs uppercase text-muted">
+                <th className="px-4 py-2.5 text-left font-medium">{t("iam:col_key_name")}</th>
+                <th className="px-4 py-2.5 text-left font-medium">{t("iam:col_created_by")}</th>
+                <th className="px-4 py-2.5 text-left font-medium">{t("iam:col_created")}</th>
+                <th className="px-4 py-2.5 text-left font-medium">{t("iam:col_last_used")}</th>
+                <th className="px-4 py-2.5 text-left font-medium">{t("iam:col_usage")}</th>
+                <th className="px-4 py-2.5"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {keys.map((k) => (
+                <tr key={k.id} className="border-b border-border-subtle last:border-0 hover:bg-hover">
+                  <td className="px-4 py-2.5">
+                    <div className="font-medium text-primary">{k.name}</div>
+                    <div className="font-mono text-xs text-muted">{k.id}</div>
+                  </td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-secondary">{k.created_by}</td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-muted">{new Date(k.created_at).toLocaleDateString()}</td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-muted">{k.last_used_at ? new Date(k.last_used_at).toLocaleString() : "—"}</td>
+                  <td className="px-4 py-2.5 text-xs">{k.usage_count}</td>
+                  <td className="px-4 py-2.5 text-right">
+                    {k.revoked ? (
+                      <span className="text-xs text-red">{t("iam:revoked")}</span>
+                    ) : (
+                      <button onClick={() => handleRevoke(k.id)} className="text-red hover:text-red/80 text-xs">
+                        <Trash2 size={12} />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Usage Analytics Tab ─────────────────────────────
+
+interface UsageStats {
+  total_permissions: number;
+  active_count: number;
+  idle_count: number;
+  denied_attempt_count: number;
+  usage_rate: number;
+  active_permissions: { action: string; usage_count: number }[];
+  idle_permissions: { action: string; usage_count: number }[];
+  denied_attempts: { action: string; attempt_count: number }[];
+}
+
+function UsageTab() {
+  const { t } = useTranslation();
+  const [stats, setStats] = useState<UsageStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get<UsageStats>(`${API_BASE}/iam/usage-stats`).then(({ data }) => setStats(data)).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-blue" size={24} /></div>;
+  if (!stats) return <EmptyState icon={Activity} title={t("iam:empty_usage")} description={t("iam:empty_usage_desc")} />;
+
+  return (
+    <div className="space-y-6">
+      {/* Usage rate gauge */}
+      <div className="grid grid-cols-4 gap-3">
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="text-xs text-secondary">{t("iam:stat_total_perms")}</div>
+          <div className="mt-1 text-2xl font-semibold">{stats.total_permissions}</div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="text-xs text-secondary">{t("iam:stat_active")}</div>
+          <div className="mt-1 text-2xl font-semibold text-green">{stats.active_count}</div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="text-xs text-secondary">{t("iam:stat_idle")}</div>
+          <div className="mt-1 text-2xl font-semibold text-yellow">{stats.idle_count}</div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="text-xs text-secondary">{t("iam:stat_usage_rate")}</div>
+          <div className="mt-1 text-2xl font-semibold text-blue">{stats.usage_rate}%</div>
+        </div>
+      </div>
+
+      {/* Idle permissions */}
+      {stats.idle_permissions.length > 0 && (
+        <div>
+          <h3 className="mb-3 text-sm font-semibold text-yellow">{t("iam:idle_permissions")}</h3>
+          <div className="space-y-1">
+            {stats.idle_permissions.map((p) => (
+              <div key={p.action} className="flex items-center gap-2 rounded-lg border border-border-subtle bg-input px-3 py-2">
+                <span className="font-mono text-xs text-muted">{p.action}</span>
+                <span className="ml-auto text-xs text-muted">{t("iam:never_used")}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Denied attempts */}
+      {stats.denied_attempts.length > 0 && (
+        <div>
+          <h3 className="mb-3 text-sm font-semibold text-red">{t("iam:denied_attempts")}</h3>
+          <div className="space-y-1">
+            {stats.denied_attempts.map((p) => (
+              <div key={p.action} className="flex items-center gap-2 rounded-lg border border-red/20 bg-red/5 px-3 py-2">
+                <span className="font-mono text-xs text-red">{p.action}</span>
+                <span className="ml-auto text-xs text-muted">{p.attempt_count}x</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Active permissions */}
+      {stats.active_permissions.length > 0 && (
+        <div>
+          <h3 className="mb-3 text-sm font-semibold text-green">{t("iam:active_permissions")}</h3>
+          <div className="space-y-1">
+            {stats.active_permissions.map((p) => (
+              <div key={p.action} className="flex items-center gap-2 rounded-lg border border-border-subtle bg-input px-3 py-2">
+                <span className="font-mono text-xs text-green">{p.action}</span>
+                <span className="ml-auto text-xs text-muted">{p.usage_count}x</span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
