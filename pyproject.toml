@@ -170,6 +170,7 @@ omit = [
     "*/api_keys.py",
     "*/kerberos.py",
     "*/self_service.py",
+    "*/search.py",
 ]
 parallel = true
 

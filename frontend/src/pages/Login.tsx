@@ -56,10 +56,7 @@ export function Login() {
 
       // No MFA — store token and navigate
       if (data.access_token) {
-        localStorage.setItem("token", data.access_token);
-        if (data.user) {
-          localStorage.setItem("user", JSON.stringify(data.user));
-        }
+        localStorage.setItem("ad_manager_token", data.access_token);
         navigate("/");
         window.location.reload();
       }
@@ -82,10 +79,7 @@ export function Login() {
       );
 
       if (data.access_token) {
-        localStorage.setItem("token", data.access_token);
-        if (data.user) {
-          localStorage.setItem("user", JSON.stringify(data.user));
-        }
+        localStorage.setItem("ad_manager_token", data.access_token);
         navigate("/");
         window.location.reload();
       }

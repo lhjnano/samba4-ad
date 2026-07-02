@@ -5,7 +5,6 @@ import {
   Globe,
   Network,
   Database,
-  Save,
   Download,
   Upload,
   Loader2,
@@ -47,13 +46,6 @@ interface LdapSettings {
   baseDn: string;
 }
 
-const DEFAULT_LDAP: LdapSettings = {
-  host: "127.0.0.1",
-  port: "389",
-  bindDn: "CN=Administrator,CN=Users,DC=corp,DC=local",
-  baseDn: "DC=corp,DC=local",
-};
-
 // ── Page ───────────────────────────────────────────
 export function Settings() {
   const { t, i18n } = useTranslation();
@@ -61,9 +53,13 @@ export function Settings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Connection settings (editable, UI-only)
-  const [ldap, setLdap] = useState<LdapSettings>(DEFAULT_LDAP);
-  const [ldapDirty, setLdapDirty] = useState(false);
+  // Connection settings (read-only, fetched from backend)
+  const [ldap, setLdap] = useState<LdapSettings>({
+    host: "",
+    port: "",
+    bindDn: "",
+    baseDn: "",
+  });
 
   const [toast, setToast] = useState<Toast>(null);
 
@@ -72,10 +68,20 @@ export function Settings() {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await api.get<DashboardStats>(
-        `${API_BASE}/dashboard/stats`,
-      );
-      setStats(data);
+      const [statsRes, connRes] = await Promise.allSettled([
+        api.get<DashboardStats>(`${API_BASE}/dashboard/stats`),
+        api.get(`${API_BASE}/settings/connection`),
+      ]);
+      if (statsRes.status === "fulfilled") setStats(statsRes.value.data);
+      if (connRes.status === "fulfilled") {
+        const c = connRes.value.data;
+        setLdap({
+          host: c.host || "",
+          port: String(c.port || ""),
+          bindDn: c.bind_dn || "",
+          baseDn: c.search_base || "",
+        });
+      }
     } catch (err) {
       setError(
         (err as { message?: string })?.message ??
@@ -96,25 +102,6 @@ export function Settings() {
     const t = setTimeout(() => setToast(null), 3500);
     return () => clearTimeout(t);
   }, [toast]);
-
-  // ── Connection settings handlers ─────────────────
-  function setLdapField<K extends keyof LdapSettings>(
-    key: K,
-    value: string,
-  ) {
-    setLdap((prev) => ({ ...prev, [key]: value }));
-    setLdapDirty(true);
-  }
-
-  function saveLdap(e: React.FormEvent) {
-    e.preventDefault();
-    // UI-only persistence placeholder
-    setLdapDirty(false);
-    setToast({
-      type: "success",
-      message: t("settings:toast_connection_saved"),
-    });
-  }
 
   function handleExport() {
     const payload = {
@@ -142,11 +129,33 @@ export function Settings() {
   }
 
   function handleImport() {
-    // Placeholder — wire to file input in a real impl
-    setToast({
-      type: "success",
-      message: t("settings:toast_import_unsupported"),
-    });
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json,.json";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result as string);
+          setToast({
+            type: "success",
+            message: t("settings:toast_import_preview", {
+              name: file.name,
+              date: data.exported_at || "—",
+            }),
+          });
+        } catch {
+          setToast({ type: "error", message: t("settings:toast_import_invalid") });
+        }
+      };
+      reader.onerror = () => {
+        setToast({ type: "error", message: t("settings:toast_import_failed") });
+      };
+      reader.readAsText(file);
+    };
+    input.click();
   }
 
   // ── Render ───────────────────────────────────────
@@ -293,60 +302,58 @@ export function Settings() {
             subtitle={t("settings:section_connection_sub")}
             className="lg:col-span-2"
           >
-            <form onSubmit={saveLdap} className="space-y-4">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="badge bg-blue/10 text-blue">
+                  {t("settings:badge_read_only")}
+                </span>
+              </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Field label={t("settings:label_ldap_host")}>
                   <input
-                    className="input font-mono"
+                    className="input font-mono opacity-70"
                     value={ldap.host}
-                    onChange={(e) => setLdapField("host", e.target.value)}
-                    placeholder={t("settings:ph_ldap_host")}
+                    readOnly
+                    placeholder="—"
                   />
                 </Field>
 
                 <Field label={t("settings:label_port")}>
                   <input
-                    type="number"
-                    className="input font-mono"
+                    type="text"
+                    className="input font-mono opacity-70"
                     value={ldap.port}
-                    onChange={(e) => setLdapField("port", e.target.value)}
-                    placeholder={t("settings:ph_port")}
+                    readOnly
+                    placeholder="—"
                   />
                 </Field>
 
                 <Field label={t("settings:label_bind_dn")}>
                   <input
-                    className="input font-mono text-xs"
+                    className="input font-mono text-xs opacity-70"
                     value={ldap.bindDn}
-                    onChange={(e) => setLdapField("bindDn", e.target.value)}
-                    placeholder={t("settings:ph_bind_dn")}
+                    readOnly
+                    placeholder="—"
                   />
                 </Field>
 
                 <Field label={t("settings:label_base_dn")}>
                   <input
-                    className="input font-mono text-xs"
+                    className="input font-mono text-xs opacity-70"
                     value={ldap.baseDn}
-                    onChange={(e) => setLdapField("baseDn", e.target.value)}
-                    placeholder={t("settings:ph_base_dn")}
+                    readOnly
+                    placeholder="—"
                   />
                 </Field>
               </div>
 
-              <div className="flex items-center justify-between border-t border-border-subtle pt-3">
+              <div className="flex items-center border-t border-border-subtle pt-3">
                 <p className="flex items-center gap-1.5 text-xs text-muted">
                   <Info size={12} />
-                  {t("settings:connection_session_note")}
+                  {t("settings:connection_readonly_note")}
                 </p>
-                <button
-                  type="submit"
-                  className="btn-primary disabled:opacity-50"
-                  disabled={!ldapDirty}
-                >
-                  <Save size={16} /> {t("settings:btn_save")}
-                </button>
               </div>
-            </form>
+            </div>
           </SectionCard>
 
           {/* ── Change Password ────────────────────── */}

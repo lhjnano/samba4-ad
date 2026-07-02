@@ -337,10 +337,26 @@ export function Users() {
     }
   }
 
-  function handleExport() {
-    const url = new URL(`${API_BASE}/users/export`, window.location.origin);
-    if (debouncedSearch) url.searchParams.set("search", debouncedSearch);
-    window.location.href = url.toString();
+  async function handleExport() {
+    try {
+      const params: Record<string, string> = {};
+      if (debouncedSearch) params.search = debouncedSearch;
+      const res = await api.get(`${API_BASE}/users/export`, {
+        params,
+        responseType: "blob",
+      });
+      const blob = new Blob([res.data], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "users.csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      // Silent fail — export is non-critical
+    }
   }
 
   // ── Create ───────────────────────────────────────

@@ -1,16 +1,46 @@
 """SPDX-License-Identifier: Apache-2.0
 
-Settings routes — ``/api/v1/settings`` (notifications, alert thresholds).
+Settings routes — ``/api/v1/settings`` (connection info, notifications, alert thresholds).
 
-Phase 2 features — all return explicit 501 so the UI never hits a silent
-dead button.
+Notification/alert preferences are Phase 2 features and return explicit 501
+so the UI never hits a silent dead button.
 """
 
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel
+
+from src.core.config import get_settings
 
 router = APIRouter(prefix="/settings", tags=["settings"])
+
+
+class ConnectionInfo(BaseModel):
+    """Read-only LDAP connection details from the active configuration."""
+
+    host: str
+    port: int
+    use_ssl: bool
+    bind_dn: str
+    search_base: str
+    read_only: bool = True
+
+
+@router.get(
+    "/connection", response_model=ConnectionInfo, summary="Get connection settings"
+)
+def get_connection() -> ConnectionInfo:
+    """Return the current LDAP connection configuration (read-only)."""
+    s = get_settings()
+    return ConnectionInfo(
+        host=s.ldap_host,
+        port=s.ldap_port,
+        use_ssl=s.ldap_use_ssl,
+        bind_dn=s.ldap_bind_dn,
+        search_base=s.ldap_search_base,
+        read_only=True,
+    )
 
 
 @router.patch(
