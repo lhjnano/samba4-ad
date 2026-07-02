@@ -11,12 +11,32 @@ existing API tests don't need to pass auth headers manually.
 
 from __future__ import annotations
 
+import contextlib
+
 import pytest
 from fastapi.testclient import TestClient
+from src.core import mfa as mfa_service
 from src.core.config import Settings
+from src.core.config import settings as global_settings
 from src.main import app
 from src.services.directory import set_backend
 from src.services.mock import MockDirectory
+
+
+@pytest.fixture(autouse=True)
+def _tmp_mfa_store(tmp_path, monkeypatch):
+    """Redirect MFA + audit file storage to a temp directory.
+
+    Without this, MFA secrets try to write to /var/log/samba-ad-manager/
+    which is not writable in the test environment.
+    """
+    tmp_log = tmp_path / "audit.log"
+    monkeypatch.setattr(global_settings, "audit_log_path", str(tmp_log))
+    with contextlib.suppress(Exception):
+        mfa_service.unenroll("admin")
+    yield
+    with contextlib.suppress(Exception):
+        mfa_service.unenroll("admin")
 
 
 @pytest.fixture(scope="module")

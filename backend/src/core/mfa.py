@@ -132,13 +132,10 @@ def should_require_mfa(username: str) -> bool:
     """Determine if MFA should be required for this user.
 
     Logic:
-    1. If MFA is globally disabled → False
-    2. If MFA is required globally → True (if enrolled or required)
-    3. If user is enrolled → True
+    1. If MFA is required globally → True
+    2. If user has enrolled (self-service) → True
+    3. Otherwise → False
     """
-    if not settings.mfa_enabled:
-        return False
-
     if settings.mfa_required:
         return True
 

@@ -201,9 +201,14 @@ def _issue_token(username: str, user: dict, client_ip: str) -> LoginOrMfaRespons
 def mfa_status(
     current: UserInfo = Depends(get_current_user),
 ) -> MfaStatusResponse:
-    """Check if MFA is enabled and current user is enrolled."""
+    """Check if MFA is enabled and current user is enrolled.
+
+    ``enabled`` = MFA feature is available (always true — self-service).
+    ``enrolled`` = this user has a TOTP secret registered.
+    ``required`` = MFA is globally mandated for all logins.
+    """
     return MfaStatusResponse(
-        enabled=settings.mfa_enabled,
+        enabled=True,
         enrolled=is_enrolled(current.username),
         required=settings.mfa_required,
     )
@@ -220,10 +225,10 @@ def mfa_setup(
 
     Returns the secret and provisioning URI for QR code generation.
     The secret is NOT saved until verified via /mfa/enroll.
-    """
-    if not settings.mfa_enabled:
-        raise HTTPException(400, "MFA is not enabled")
 
+    MFA enrollment is always allowed — self-service security improvement.
+    Global mfa_required only controls whether MFA is forced at login.
+    """
     secret = generate_secret()
     uri = get_provisioning_uri(secret, current.username)
 
