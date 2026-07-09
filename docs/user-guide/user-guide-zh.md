@@ -22,7 +22,8 @@
 14. [系统日志](#14-系统日志)
 15. [设置](#15-设置)
 16. [API参考](#16-api参考)
-17. [故障排除](#17-故障排除)
+17. [HTTPS / SSL 设置](#17-https--ssl-设置)
+18. [故障排除](#18-故障排除)
 
 ---
 
@@ -496,7 +497,95 @@ curl http://<SERVER_IP>:8000/api/v1/users \
 
 ---
 
-## 17. 故障排除
+## 17. HTTPS / SSL 设置
+
+本章介绍如何为Web管理门户配置HTTPS/SSL加密。启用SSL后，登录凭据和OIDC令牌将在网络中加密传输。
+
+### 第1步：DNS记录设置
+
+为Web服务器FQDN添加A记录：
+
+```bash
+samba-tool dns add 127.0.0.1 <zone> <hostname> A <SERVER_IP> -U Administrator
+```
+
+示例：
+
+```bash
+samba-tool dns add 127.0.0.1 corp.local ad A 192.168.39.1
+```
+
+### 第2步：证书生成
+
+证书生成有两个选项：
+
+#### 选项A — 自签名（开发）
+
+生成用于开发/测试环境快速设置的自签名证书：
+
+```bash
+openssl req -x509 -newkey rsa:2048 \
+  -keyout /etc/samba-ad-manager/server.key \
+  -out /etc/samba-ad-manager/server.crt \
+  -days 365 -subj "/CN=<FQDN>" -nodes
+chmod 600 /etc/samba-ad-manager/server.key
+```
+
+#### 选项B — Samba CA（生产）
+
+- 使用Samba AD DC的内置证书颁发机构（CA）
+- 导出CA证书并签署服务器证书
+- 参考：https://wiki.samba.org/index.php/PKI
+
+### 第3步：配置带有SSL的uvicorn
+
+编辑systemd服务以添加SSL参数：
+
+```bash
+sudo systemctl edit samba-ad-manager
+```
+
+在ExecStart行中添加以下选项：
+
+```ini
+ExecStart=... uvicorn ... --ssl-keyfile /etc/samba-ad-manager/server.key --ssl-certfile /etc/samba-ad-manager/server.crt
+```
+
+### 第4步：更新OIDC Issuer
+
+在`/etc/samba-ad-manager/env`文件中将OIDC issuer改为HTTPS：
+
+```bash
+# /etc/samba-ad-manager/env
+OIDC_ISSUER=https://<FQDN>:8000
+```
+
+### 第5步：更新Kerberos SPN（用于SSO）
+
+注册用于单点登录（SSO）的Kerberos SPN：
+
+```bash
+samba-tool spn add HTTP/<FQDN> Administrator
+# Re-export keytab if using Kerberos SSO
+```
+
+### 第6步：重启并验证
+
+重启服务并验证HTTPS连接：
+
+```bash
+sudo systemctl restart samba-ad-manager
+curl -k https://<FQDN>:8000/health
+```
+
+### 注意事项
+
+- 使用自签名证书时，浏览器会显示安全警告。在生产环境中，请使用受信任的CA签名证书（选项B）。
+- 服务重启后，所有现有的JWT令牌和会话都将失效。用户需要重新登录。
+
+---
+
+## 18. 故障排除
 
 ### 服务无法启动
 

@@ -63,6 +63,10 @@ const SECTIONS: ManualSection[] = [
       { key: "language", label: "manual:topic_language" },
     ],
   },
+  {
+    titleKey: "manual:section_advanced",
+    items: [{ key: "https", label: "manual:topic_https" }],
+  },
 ];
 
 // ── Clipboard helper (works on HTTP, not just HTTPS) ───────────

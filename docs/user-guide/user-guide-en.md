@@ -22,7 +22,8 @@
 14. [System Logs](#14-system-logs)
 15. [Settings](#15-settings)
 16. [API Reference](#16-api-reference)
-17. [Troubleshooting](#17-troubleshooting)
+17. [HTTPS / SSL Setup](#17-https--ssl-setup)
+18. [Troubleshooting](#18-troubleshooting)
 
 ---
 
@@ -541,7 +542,95 @@ curl http://<SERVER_IP>:8000/api/v1/users \
 
 ---
 
-## 17. Troubleshooting
+## 17. HTTPS / SSL Setup
+
+This chapter describes how to configure HTTPS/SSL encryption for the web management portal. With SSL enabled, login credentials and OIDC tokens are transmitted encrypted over the network.
+
+### Step 1: DNS Record Setup
+
+Add an A record for the web server FQDN:
+
+```bash
+samba-tool dns add 127.0.0.1 <zone> <hostname> A <SERVER_IP> -U Administrator
+```
+
+Example:
+
+```bash
+samba-tool dns add 127.0.0.1 corp.local ad A 192.168.39.1
+```
+
+### Step 2: Certificate Generation
+
+Two options are available for certificate generation:
+
+#### Option A — Self-signed (development)
+
+Generate a self-signed certificate for quick setup in development/test environments:
+
+```bash
+openssl req -x509 -newkey rsa:2048 \
+  -keyout /etc/samba-ad-manager/server.key \
+  -out /etc/samba-ad-manager/server.crt \
+  -days 365 -subj "/CN=<FQDN>" -nodes
+chmod 600 /etc/samba-ad-manager/server.key
+```
+
+#### Option B — Samba CA (production)
+
+- Use the Samba AD DC's built-in Certificate Authority
+- Export the CA certificate and sign a server certificate
+- Reference: https://wiki.samba.org/index.php/PKI
+
+### Step 3: Configure uvicorn with SSL
+
+Edit the systemd service to add the SSL parameters:
+
+```bash
+sudo systemctl edit samba-ad-manager
+```
+
+Add the following options to the ExecStart line:
+
+```ini
+ExecStart=... uvicorn ... --ssl-keyfile /etc/samba-ad-manager/server.key --ssl-certfile /etc/samba-ad-manager/server.crt
+```
+
+### Step 4: Update OIDC Issuer
+
+Update the OIDC issuer to HTTPS in the `/etc/samba-ad-manager/env` file:
+
+```bash
+# /etc/samba-ad-manager/env
+OIDC_ISSUER=https://<FQDN>:8000
+```
+
+### Step 5: Update Kerberos SPN (for SSO)
+
+Register the Kerberos SPN for Single Sign-On (SSO):
+
+```bash
+samba-tool spn add HTTP/<FQDN> Administrator
+# Re-export keytab if using Kerberos SSO
+```
+
+### Step 6: Restart and Verify
+
+Restart the service and verify the HTTPS connection:
+
+```bash
+sudo systemctl restart samba-ad-manager
+curl -k https://<FQDN>:8000/health
+```
+
+### Notes
+
+- When using a self-signed certificate, browsers will display a security warning. For production, use a trusted CA-signed certificate (Option B).
+- After restarting the service, all existing JWT tokens and sessions are invalidated. Users will need to log in again.
+
+---
+
+## 18. Troubleshooting
 
 ### Service Won't Start
 

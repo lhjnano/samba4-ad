@@ -22,7 +22,8 @@
 14. [시스템 로그](#14-시스템-로그)
 15. [설정](#15-설정)
 16. [API 참조](#16-api-참조)
-17. [문제 해결](#17-문제-해결)
+17. [HTTPS / SSL 설정](#17-https--ssl-설정)
+18. [문제 해결](#18-문제-해결)
 
 ---
 
@@ -520,7 +521,95 @@ curl http://<SERVER_IP>:8000/api/v1/users \
 
 ---
 
-## 17. 문제 해결
+## 17. HTTPS / SSL 설정
+
+이 장에서는 웹 관리 포털에 HTTPS/SSL 암호화를 설정하는 방법을 설명합니다. SSL을 사용하면 로그인 자격 증명과 OIDC 토큰이 네트워크에서 암호화되어 전송됩니다.
+
+### 1단계: DNS 레코드 설정
+
+웹 서버 FQDN에 대한 A 레코드를 추가합니다:
+
+```bash
+samba-tool dns add 127.0.0.1 <zone> <hostname> A <SERVER_IP> -U Administrator
+```
+
+예시:
+
+```bash
+samba-tool dns add 127.0.0.1 corp.local ad A 192.168.39.1
+```
+
+### 2단계: 인증서 생성
+
+인증서 생성에는 두 가지 옵션이 있습니다:
+
+#### 옵션 A — 자체 서명 (개발용)
+
+개발/테스트 환경에서 빠르게 설정할 수 있는 자체 서명 인증서를 생성합니다:
+
+```bash
+openssl req -x509 -newkey rsa:2048 \
+  -keyout /etc/samba-ad-manager/server.key \
+  -out /etc/samba-ad-manager/server.crt \
+  -days 365 -subj "/CN=<FQDN>" -nodes
+chmod 600 /etc/samba-ad-manager/server.key
+```
+
+#### 옵션 B — Samba CA (프로덕션용)
+
+- Samba AD DC의 내장 인증 기관(CA)을 사용합니다
+- CA 인증서를 내보내고 서버 인증서에 서명합니다
+- 참고: https://wiki.samba.org/index.php/PKI
+
+### 3단계: SSL이 적용된 uvicorn 구성
+
+systemd 서비스를 편집하여 SSL 매개변수를 추가합니다:
+
+```bash
+sudo systemctl edit samba-ad-manager
+```
+
+ExecStart 줄에 다음 옵션을 추가합니다:
+
+```ini
+ExecStart=... uvicorn ... --ssl-keyfile /etc/samba-ad-manager/server.key --ssl-certfile /etc/samba-ad-manager/server.crt
+```
+
+### 4단계: OIDC Issuer 업데이트
+
+`/etc/samba-ad-manager/env` 파일에서 OIDC issuer를 HTTPS로 변경합니다:
+
+```bash
+# /etc/samba-ad-manager/env
+OIDC_ISSUER=https://<FQDN>:8000
+```
+
+### 5단계: Kerberos SPN 업데이트 (SSO)
+
+SSO(Single Sign-On)를 위한 Kerberos SPN을 등록합니다:
+
+```bash
+samba-tool spn add HTTP/<FQDN> Administrator
+# Re-export keytab if using Kerberos SSO
+```
+
+### 6단계: 재시작 및 확인
+
+서비스를 재시작하고 HTTPS 연결을 확인합니다:
+
+```bash
+sudo systemctl restart samba-ad-manager
+curl -k https://<FQDN>:8000/health
+```
+
+### 주의 사항
+
+- 자체 서명 인증서를 사용하면 브라우저에 보안 경고가 표시됩니다. 프로덕션 환경에서는 신뢰할 수 있는 CA 서명 인증서(옵션 B)를 사용하세요.
+- 서비스 재시작 후 기존 JWT 토큰과 세션이 모두 무효화됩니다. 사용자는 다시 로그인해야 합니다.
+
+---
+
+## 18. 문제 해결
 
 ### 서비스가 시작되지 않는 경우
 

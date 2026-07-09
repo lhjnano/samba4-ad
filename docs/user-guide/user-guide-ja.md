@@ -22,7 +22,8 @@
 14. [システムログ](#14-システムログ)
 15. [設定](#15-設定)
 16. [APIリファレンス](#16-apiリファレンス)
-17. [トラブルシューティング](#17-トラブルシューティング)
+17. [HTTPS / SSL 設定](#17-https--ssl-設定)
+18. [トラブルシューティング](#18-トラブルシューティング)
 
 ---
 
@@ -488,7 +489,95 @@ curl http://<SERVER_IP>:8000/api/v1/users \
 
 ---
 
-## 17. トラブルシューティング
+## 17. HTTPS / SSL 設定
+
+この章では、Web管理ポータルにHTTPS/SSL暗号化を設定する方法を説明します。SSLを有効にすると、ログイン資格情報とOIDCトークンがネットワーク上で暗号化されて送信されます。
+
+### ステップ1: DNSレコード設定
+
+WebサーバーのFQDNにAレコードを追加します:
+
+```bash
+samba-tool dns add 127.0.0.1 <zone> <hostname> A <SERVER_IP> -U Administrator
+```
+
+例:
+
+```bash
+samba-tool dns add 127.0.0.1 corp.local ad A 192.168.39.1
+```
+
+### ステップ2: 証明書生成
+
+証明書生成には2つのオプションがあります:
+
+#### オプションA — 自己署名（開発用）
+
+開発・テスト環境で迅速にセットアップできる自己署名証明書を生成します:
+
+```bash
+openssl req -x509 -newkey rsa:2048 \
+  -keyout /etc/samba-ad-manager/server.key \
+  -out /etc/samba-ad-manager/server.crt \
+  -days 365 -subj "/CN=<FQDN>" -nodes
+chmod 600 /etc/samba-ad-manager/server.key
+```
+
+#### オプションB — Samba CA（本番用）
+
+- Samba AD DCの内蔵認証機関（CA）を使用します
+- CA証明書をエクスポートし、サーバー証明書に署名します
+- 参考: https://wiki.samba.org/index.php/PKI
+
+### ステップ3: SSL付きuvicornの構成
+
+systemdサービスを編集してSSLパラメータを追加します:
+
+```bash
+sudo systemctl edit samba-ad-manager
+```
+
+ExecStart行に以下のオプションを追加します:
+
+```ini
+ExecStart=... uvicorn ... --ssl-keyfile /etc/samba-ad-manager/server.key --ssl-certfile /etc/samba-ad-manager/server.crt
+```
+
+### ステップ4: OIDC Issuerの更新
+
+`/etc/samba-ad-manager/env`ファイルでOIDC issuerをHTTPSに変更します:
+
+```bash
+# /etc/samba-ad-manager/env
+OIDC_ISSUER=https://<FQDN>:8000
+```
+
+### ステップ5: Kerberos SPNの更新（SSO用）
+
+SSO（シングルサインオン）用のKerberos SPNを登録します:
+
+```bash
+samba-tool spn add HTTP/<FQDN> Administrator
+# Re-export keytab if using Kerberos SSO
+```
+
+### ステップ6: 再起動と確認
+
+サービスを再起動し、HTTPS接続を確認します:
+
+```bash
+sudo systemctl restart samba-ad-manager
+curl -k https://<FQDN>:8000/health
+```
+
+### 注意事項
+
+- 自己署名証明書を使用すると、ブラウザにセキュリティ警告が表示されます。本番環境では信頼されたCA署名証明書（オプションB）を使用してください。
+- サービス再起動後、既存のJWTトークンとセッションはすべて無効化されます。ユーザーは再ログインが必要です。
+
+---
+
+## 18. トラブルシューティング
 
 ### サービスが起動しない場合
 
