@@ -460,13 +460,13 @@ sudo systemctl enable samba-ad-manager    # 自動起動設定
 `/health`、`/auth/login`、`/setup/*`を除く全APIエンドポイントにJWT Bearerトークンが必要です:
 
 ```bash
-# トークンの取得
-curl -X POST http://localhost:8000/api/v1/auth/login \
+# トークンの取得（<SERVER_IP>を実際のサーバーIPに置き換えてください）
+curl -X POST http://<SERVER_IP>:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin"}'
 
 # トークンの使用
-curl http://localhost:8000/api/v1/users \
+curl http://<SERVER_IP>:8000/api/v1/users \
   -H "Authorization: Bearer <トークン>"
 ```
 

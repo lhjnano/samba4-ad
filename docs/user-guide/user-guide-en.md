@@ -513,13 +513,13 @@ The full interactive API documentation is available at:
 All API endpoints (except `/health`, `/auth/login`, and `/setup/*`) require a JWT Bearer token:
 
 ```bash
-# Login to get token
-curl -X POST http://localhost:8000/api/v1/auth/login \
+# Login to get token (replace <SERVER_IP> with your actual server IP)
+curl -X POST http://<SERVER_IP>:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin"}'
 
 # Use token for requests
-curl http://localhost:8000/api/v1/users \
+curl http://<SERVER_IP>:8000/api/v1/users \
   -H "Authorization: Bearer <your-token>"
 ```
 
@@ -567,7 +567,7 @@ sudo ss -tlnp | grep 8000
 
 - **Mock mode**: Default credentials are `admin`/`admin`
 - **LDAP mode**: Verify the Samba DC is running: `samba -V`
-- Check if the LDAP service is reachable: `ldapsearch -x -H ldap://localhost`
+- Check if the LDAP service is reachable (run on the server): `ldapsearch -x -H ldap://127.0.0.1`
 
 ### Frontend Shows Blank Page
 

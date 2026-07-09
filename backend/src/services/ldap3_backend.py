@@ -182,6 +182,26 @@ def _probe_port(host: str, port: int, timeout: float = 2.0) -> tuple[bool, float
         return False, 0.0
 
 
+def _detect_public_ip() -> str:
+    """Best-effort auto-detection of the server's primary IP address.
+
+    Used when ``DC_IP`` is not explicitly configured. Resolves the
+    hostname to an IP via ``socket.getaddrinfo``. Falls back to an empty
+    string if detection fails (caller then falls back to ``ldap_host``).
+    """
+    try:
+        hostname = socket.gethostname()
+        addrs = socket.getaddrinfo(hostname, None)
+        for addr in addrs:
+            ip = addr[4][0]
+            # Skip loopback — we want a real interface IP
+            if not ip.startswith("127."):
+                return ip
+    except OSError:
+        pass
+    return ""
+
+
 class Ldap3Backend:
     """Production ``DirectoryBackend`` backed by ldap3 + samba-tool."""
 
@@ -1378,7 +1398,7 @@ class Ldap3Backend:
             domain_functional_level=dfl,
             forest_functional_level=ffl,
             dc_hostname=dc_host or info.get("dc_name", "").split(".")[0] or netbios,
-            dc_ip=self._cfg.ldap_host,
+            dc_ip=self._cfg.dc_ip or _detect_public_ip() or self._cfg.ldap_host,
             object_count=0,
             created=info.get("creation_time"),
             samba_version=info.get("samba_version"),

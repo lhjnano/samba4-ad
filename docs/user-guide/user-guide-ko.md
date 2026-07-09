@@ -492,13 +492,13 @@ GPO 설정을 파일로 내보내기
 `/health`, `/auth/login`, `/setup/*`를 제외한 모든 API 엔드포인트에는 JWT Bearer 토큰이 필요합니다:
 
 ```bash
-# 토큰 받기
-curl -X POST http://localhost:8000/api/v1/auth/login \
+# 토큰 받기 (<SERVER_IP>를 실제 서버 IP로 변경)
+curl -X POST http://<SERVER_IP>:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin"}'
 
 # 토큰 사용
-curl http://localhost:8000/api/v1/users \
+curl http://<SERVER_IP>:8000/api/v1/users \
   -H "Authorization: Bearer <토큰>"
 ```
 
@@ -546,7 +546,7 @@ sudo ss -tlnp | grep 8000
 
 - **Mock 모드**: 기본 계정은 `admin`/`admin`
 - **LDAP 모드**: Samba DC 실행 확인: `samba -V`
-- LDAP 서비스 연결 확인: `ldapsearch -x -H ldap://localhost`
+- LDAP 서비스 연결 확인 (서버에서 실행): `ldapsearch -x -H ldap://127.0.0.1`
 
 ### 프론트엔드가 빈 페이지로 표시되는 경우
 

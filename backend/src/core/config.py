@@ -64,6 +64,11 @@ class Settings(BaseSettings):
     ldap_timeout: float = 30.0
     ldap_page_size: int = 1000
 
+    # --- Public-facing DC IP (shown in web manual / domain info) ---
+    # ldap_host is typically 127.0.0.1 (local connection), but clients
+    # need the real server IP. If empty, auto-detected at startup.
+    dc_ip: str = ""
+
     # --- samba-tool (subprocess wrapper) ---
     samba_tool_path: str = "samba-tool"
     # Path to smb.conf — required by most samba-tool domain operations.

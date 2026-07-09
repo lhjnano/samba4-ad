@@ -468,13 +468,13 @@ sudo systemctl enable samba-ad-manager    # 开机自启
 除`/health`、`/auth/login`和`/setup/*`外，所有API端点都需要JWT Bearer令牌：
 
 ```bash
-# 获取令牌
-curl -X POST http://localhost:8000/api/v1/auth/login \
+# 获取令牌（请将<SERVER_IP>替换为实际的服务器IP地址）
+curl -X POST http://<SERVER_IP>:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin"}'
 
 # 使用令牌
-curl http://localhost:8000/api/v1/users \
+curl http://<SERVER_IP>:8000/api/v1/users \
   -H "Authorization: Bearer <您的令牌>"
 ```
 

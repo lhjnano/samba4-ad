@@ -174,6 +174,10 @@ LDAP_BIND_DN=CN=Administrator,CN=Users,DC=CORP,DC=LOCAL
 LDAP_BIND_PASSWORD=ChangeMe123!
 LDAP_SEARCH_BASE=DC=CORP,DC=LOCAL
 
+# Public-facing DC IP (shown in web manual / domain info)
+# If empty, auto-detected from hostname at runtime
+DC_IP=${SERVER_IP}
+
 # Samba tool
 SAMBA_TOOL_PATH=samba-tool
 SAMBA_CONFIG=/etc/samba/smb.conf
