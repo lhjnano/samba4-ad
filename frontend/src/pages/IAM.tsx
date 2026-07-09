@@ -9,6 +9,7 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
+  Clock,
   Plus,
   Trash2,
   Lock,
@@ -945,72 +946,120 @@ function UsageTab() {
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-blue" size={24} /></div>;
   if (!stats) return <EmptyState icon={Activity} title={t("iam:empty_usage")} description={t("iam:empty_usage_desc")} />;
 
+  const maxUsage = Math.max(...stats.active_permissions.map((p) => p.usage_count), 1);
+  const topActive = stats.active_permissions.slice(0, 10);
+  const rate = Math.min(Math.max(stats.usage_rate, 0), 100);
+
   return (
     <div className="space-y-6">
-      {/* Usage rate gauge */}
-      <div className="grid grid-cols-4 gap-3">
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="text-xs text-secondary">{t("iam:stat_total_perms")}</div>
-          <div className="mt-1 text-2xl font-semibold">{stats.total_permissions}</div>
+      {/* Summary stat cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <UsageStatCard icon={Shield} label={t("iam:usage_total")} value={stats.total_permissions} />
+        <UsageStatCard icon={CheckCircle2} label={t("iam:usage_active")} value={stats.active_count} tone="green" />
+        <UsageStatCard icon={Clock} label={t("iam:usage_idle")} value={stats.idle_count} tone="yellow" />
+        <UsageStatCard icon={ShieldX} label={t("iam:usage_denied")} value={stats.denied_attempt_count} tone="red" />
+      </div>
+
+      {/* Usage rate progress bar */}
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-sm font-medium text-primary">{t("iam:usage_rate")}</span>
+          <span className="text-sm font-semibold text-green">{stats.usage_rate}%</span>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="text-xs text-secondary">{t("iam:stat_active")}</div>
-          <div className="mt-1 text-2xl font-semibold text-green">{stats.active_count}</div>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="text-xs text-secondary">{t("iam:stat_idle")}</div>
-          <div className="mt-1 text-2xl font-semibold text-yellow">{stats.idle_count}</div>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="text-xs text-secondary">{t("iam:stat_usage_rate")}</div>
-          <div className="mt-1 text-2xl font-semibold text-blue">{stats.usage_rate}%</div>
+        <div className="h-3 w-full overflow-hidden rounded-full bg-hover">
+          <div className="h-full rounded-full bg-green transition-all duration-500" style={{ width: `${rate}%` }} />
         </div>
       </div>
 
-      {/* Idle permissions */}
-      {stats.idle_permissions.length > 0 && (
-        <div>
-          <h3 className="mb-3 text-sm font-semibold text-yellow">{t("iam:idle_permissions")}</h3>
-          <div className="space-y-1">
-            {stats.idle_permissions.map((p) => (
-              <div key={p.action} className="flex items-center gap-2 rounded-lg border border-border-subtle bg-input px-3 py-2">
-                <span className="font-mono text-xs text-muted">{p.action}</span>
-                <span className="ml-auto text-xs text-muted">{t("iam:never_used")}</span>
+      {/* Active permissions bar chart */}
+      <div>
+        <h3 className="mb-3 text-sm font-semibold text-primary">{t("iam:usage_active_perms")}</h3>
+        {topActive.length === 0 ? (
+          <div className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted">{t("iam:usage_no_data")}</div>
+        ) : (
+          <div className="space-y-2">
+            {topActive.map((p) => (
+              <div key={p.action} className="flex items-center gap-3">
+                <span className="w-44 shrink-0 truncate font-mono text-xs text-secondary" title={p.action}>{p.action}</span>
+                <div className="h-5 flex-1 overflow-hidden rounded bg-hover">
+                  <div
+                    className="h-full rounded bg-blue transition-all duration-500"
+                    style={{ width: `${(p.usage_count / maxUsage) * 100}%` }}
+                  />
+                </div>
+                <span className="w-14 shrink-0 text-right text-xs font-medium text-primary">{p.usage_count}</span>
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
+
+      {/* Idle permissions */}
+      <div>
+        <h3 className="mb-3 text-sm font-semibold text-yellow">{t("iam:usage_idle_perms")}</h3>
+        {stats.idle_permissions.length === 0 ? (
+          <div className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted">{t("iam:usage_no_data")}</div>
+        ) : (
+          <div className="space-y-1">
+            {stats.idle_permissions.map((p) => (
+              <div key={p.action} className="flex items-center gap-2 rounded-lg border border-yellow/20 bg-yellow/5 px-3 py-2">
+                <Clock size={14} className="flex-shrink-0 text-yellow" />
+                <span className="font-mono text-xs text-secondary">{p.action}</span>
+                <span className="ml-auto rounded-full bg-yellow/15 px-2 py-0.5 text-xs font-medium text-yellow">
+                  {t("iam:usage_count", { count: p.usage_count })}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Denied attempts */}
       {stats.denied_attempts.length > 0 && (
         <div>
-          <h3 className="mb-3 text-sm font-semibold text-red">{t("iam:denied_attempts")}</h3>
+          <h3 className="mb-3 text-sm font-semibold text-red">{t("iam:usage_denied_attempts")}</h3>
           <div className="space-y-1">
             {stats.denied_attempts.map((p) => (
               <div key={p.action} className="flex items-center gap-2 rounded-lg border border-red/20 bg-red/5 px-3 py-2">
+                <ShieldX size={14} className="flex-shrink-0 text-red" />
                 <span className="font-mono text-xs text-red">{p.action}</span>
-                <span className="ml-auto text-xs text-muted">{p.attempt_count}x</span>
+                <span className="ml-auto rounded-full bg-red/15 px-2 py-0.5 text-xs font-medium text-red">
+                  {t("iam:usage_count", { count: p.attempt_count })}
+                </span>
               </div>
             ))}
           </div>
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* Active permissions */}
-      {stats.active_permissions.length > 0 && (
-        <div>
-          <h3 className="mb-3 text-sm font-semibold text-green">{t("iam:active_permissions")}</h3>
-          <div className="space-y-1">
-            {stats.active_permissions.map((p) => (
-              <div key={p.action} className="flex items-center gap-2 rounded-lg border border-border-subtle bg-input px-3 py-2">
-                <span className="font-mono text-xs text-green">{p.action}</span>
-                <span className="ml-auto text-xs text-muted">{p.usage_count}x</span>
-              </div>
-            ))}
-          </div>
+function UsageStatCard({ icon: Icon, label, value, tone }: {
+  icon: React.ElementType;
+  label: string;
+  value: number;
+  tone?: "green" | "yellow" | "red";
+}) {
+  const toneClass = tone === "green"
+    ? "bg-green/15 text-green"
+    : tone === "yellow"
+    ? "bg-yellow/15 text-yellow"
+    : tone === "red"
+    ? "bg-red/15 text-red"
+    : "bg-blue/15 text-blue";
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-4">
+      <div className="flex items-center justify-between">
+        <div className="min-w-0">
+          <div className="text-xs text-secondary">{label}</div>
+          <div className="mt-1 text-2xl font-semibold text-primary">{value}</div>
         </div>
-      )}
+        <div className={clsx("flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg", toneClass)}>
+          <Icon size={18} />
+        </div>
+      </div>
     </div>
   );
 }

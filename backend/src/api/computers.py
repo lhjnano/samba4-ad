@@ -18,6 +18,7 @@ from src.models.computers import (
     ComputerDetail,
     ComputerStats,
     ComputerSummary,
+    ComputerUpdate,
     JoinTrendPoint,
     OsDistribution,
 )
@@ -121,6 +122,20 @@ def get_computer(
 ) -> ComputerDetail:
     try:
         return directory.get_computer(item_id)
+    except DirectoryError as e:
+        raise to_http_error(e) from e
+
+
+@router.patch("/{item_id}", response_model=ComputerDetail)
+def update_computer(
+    item_id: str,
+    payload: ComputerUpdate,
+    directory: DirectoryBackend = Depends(get_directory),
+) -> ComputerDetail:
+    try:
+        return directory.update_computer(
+            item_id, **payload.model_dump(exclude_unset=True)
+        )
     except DirectoryError as e:
         raise to_http_error(e) from e
 

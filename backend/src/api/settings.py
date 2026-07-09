@@ -11,7 +11,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
-from src.core.config import get_settings
+from src.core.config import get_settings, settings
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -40,6 +40,42 @@ def get_connection() -> ConnectionInfo:
         bind_dn=s.ldap_bind_dn,
         search_base=s.ldap_search_base,
         read_only=True,
+    )
+
+
+class MfaSettings(BaseModel):
+    """MFA feature state and enforcement policy."""
+
+    mfa_enabled: bool
+    mfa_required: bool
+
+
+class MfaSettingsUpdate(BaseModel):
+    """Request body for toggling MFA enforcement."""
+
+    mfa_required: bool
+
+
+@router.get("/mfa", response_model=MfaSettings, summary="Get MFA settings")
+def get_mfa() -> MfaSettings:
+    """Return the current MFA configuration (feature flag + enforcement)."""
+    s = get_settings()
+    return MfaSettings(
+        mfa_enabled=s.mfa_enabled,
+        mfa_required=s.mfa_required,
+    )
+
+
+@router.patch("/mfa", response_model=MfaSettings, summary="Update MFA settings")
+def update_mfa(body: MfaSettingsUpdate) -> MfaSettings:
+    """Toggle whether MFA is required for login.
+
+    Only ``mfa_required`` is mutable; ``mfa_enabled`` is a read-only feature flag.
+    """
+    settings.mfa_required = body.mfa_required
+    return MfaSettings(
+        mfa_enabled=settings.mfa_enabled,
+        mfa_required=settings.mfa_required,
     )
 
 

@@ -86,6 +86,12 @@ _PUBLIC_PREFIXES = (
     "/api/v1/auth/login",
     "/api/v1/auth/mfa-verify",
     "/api/v1/auth/refresh",
+    # OIDC public endpoints — external clients call these WITHOUT a bearer
+    # token. ``token`` authenticates via client_id/client_secret; ``jwks``
+    # and discovery are fully public. ``authorize`` and ``userinfo`` stay
+    # protected (authorize requires a logged-in user; userinfo a bearer).
+    "/api/v1/oidc/token",
+    "/api/v1/oidc/jwks",
     "/api/v1/setup",
     "/docs",
     "/redoc",
@@ -175,6 +181,20 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 }
                 return await call_next(request)
 
+        # 4. Kerberos SSO init endpoint — prompt for Negotiate.
+        #    When the browser first requests this endpoint without a
+        #    Negotiate token, respond 401 with WWW-Authenticate: Negotiate
+        #    so the browser retries with a Kerberos ticket (handled above).
+        if path == "/api/v1/auth/kerberos-init":
+            return JSONResponse(
+                status_code=401,
+                content=ErrorDetail(
+                    code="UNAUTHORIZED",
+                    message="Kerberos authentication required",
+                ).model_dump(),
+                headers={"WWW-Authenticate": "Negotiate"},
+            )
+
         return JSONResponse(
             status_code=401,
             content=ErrorDetail(
@@ -232,6 +252,14 @@ async def value_error_handler(_request, exc: ValueError) -> JSONResponse:
 @app.get("/health", tags=["meta"], summary="Liveness probe")
 def root_health() -> dict[str, str]:
     return {"status": "ok", "app": settings.app_name, "mode": settings.app_mode}
+
+
+@app.get("/.well-known/openid-configuration", include_in_schema=False)
+async def oidc_discovery(request: Request):
+    """OIDC discovery document at the well-known root path."""
+    from src.api.oidc import discovery
+
+    return await discovery(request)
 
 
 # ── Serve React SPA in production ────────────────────────────────────

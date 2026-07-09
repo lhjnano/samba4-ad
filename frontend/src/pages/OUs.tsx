@@ -13,6 +13,8 @@ import {
   CheckCircle2,
   X,
   Network,
+  Users,
+  Pencil,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { api } from "@/api/client";
@@ -21,6 +23,9 @@ import { DataTable } from "@/components/ui/DataTable";
 import { Drawer } from "@/components/ui/Drawer";
 import { Pagination } from "@/components/ui/Pagination";
 import { EmptyState } from "@/components/ui/EmptyState";
+
+// Detail endpoint includes managed_by (not present in the list item).
+type OUDetail = ADOU & { managed_by?: string | null };
 
 // ── Constants ──────────────────────────────────────
 const PAGE_SIZE = 50;
@@ -72,11 +77,18 @@ export function OUs() {
 
   // Detail drawer
   const [detailOpen, setDetailOpen] = useState(false);
-  const [selectedOU, setSelectedOU] = useState<ADOU | null>(null);
+  const [selectedOU, setSelectedOU] = useState<OUDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
   // Detail actions
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Inline edit
+  const [editMode, setEditMode] = useState(false);
+  const [editForm, setEditForm] = useState({ description: "", managed_by: "" });
+  const [editSaving, setEditSaving] = useState(false);
 
   // Create drawer
   const [createOpen, setCreateOpen] = useState(false);
@@ -134,16 +146,70 @@ export function OUs() {
   }, [toast]);
 
   // ── Detail ───────────────────────────────────────
-  function openDetail(ou: ADOU) {
+  async function openDetail(ou: ADOU) {
     setSelectedOU(ou);
     setDetailOpen(true);
     setShowDeleteConfirm(false);
+    setEditMode(false);
+    setDetailError(null);
+    setDetailLoading(true);
+    try {
+      const { data } = await api.get<OUDetail>(`${API_BASE}/ou/${ou.id}`);
+      // Merge managed_by from detail while preserving list-only fields (gpo_links).
+      setSelectedOU({ ...ou, managed_by: data.managed_by ?? null });
+    } catch (err) {
+      setDetailError(
+        (err as { message?: string })?.message ?? t("ous:error_load_detail"),
+      );
+    } finally {
+      setDetailLoading(false);
+    }
   }
 
   function closeDetail() {
     setDetailOpen(false);
     setSelectedOU(null);
     setShowDeleteConfirm(false);
+    setEditMode(false);
+    setDetailError(null);
+  }
+
+  // ── Inline edit ─────────────────────────────────
+  function startEdit() {
+    setEditForm({
+      description: selectedOU?.description ?? "",
+      managed_by: selectedOU?.managed_by ?? "",
+    });
+    setEditMode(true);
+  }
+
+  function cancelEdit() {
+    setEditMode(false);
+  }
+
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedOU) return;
+    setEditSaving(true);
+    try {
+      await api.patch(`${API_BASE}/ou/${selectedOU.id}`, {
+        description: editForm.description.trim(),
+        managed_by: editForm.managed_by.trim(),
+      });
+      const { data } = await api.get<OUDetail>(`${API_BASE}/ou/${selectedOU.id}`);
+      setSelectedOU({ ...selectedOU, ...data });
+      setEditMode(false);
+      setToast({ type: "success", message: t("ous:toast_edit_success") });
+      fetchOUs();
+    } catch (err) {
+      setToast({
+        type: "error",
+        message:
+          (err as { message?: string })?.message ?? t("ous:toast_edit_failed"),
+      });
+    } finally {
+      setEditSaving(false);
+    }
   }
 
   // ── Delete ───────────────────────────────────────
@@ -347,6 +413,18 @@ export function OUs() {
         title={t("ous:drawer_title_detail")}
         width="lg"
       >
+        {detailLoading && !selectedOU && (
+          <div className="flex h-40 items-center justify-center">
+            <Loader2 size={24} className="animate-spin text-secondary" />
+          </div>
+        )}
+
+        {detailError && (
+          <div className="mb-4 flex items-center gap-2 rounded-md border border-red/30 bg-red/5 px-4 py-3 text-sm text-red">
+            <AlertCircle size={16} /> {detailError}
+          </div>
+        )}
+
         {selectedOU && (
           <div className="space-y-6">
             {/* Identity */}
@@ -379,23 +457,91 @@ export function OUs() {
             </div>
 
             {/* Basic info */}
-            <DetailSection title={t("ous:section_basic_info")}>
-              <InfoRow
-                icon={FolderTree}
-                label={t("ous:label_name")}
-                value={selectedOU.name}
-              />
-              <InfoRow
-                icon={Info}
-                label={t("ous:label_description")}
-                value={selectedOU.description}
-              />
-              <InfoRow
-                icon={Network}
-                label={t("ous:label_dn")}
-                value={selectedOU.dn}
-                mono
-              />
+            <DetailSection
+              title={t("ous:section_basic_info")}
+              action={
+                !editMode ? (
+                  <button
+                    type="button"
+                    onClick={startEdit}
+                    className="flex items-center gap-1 rounded px-2 py-1 text-xs text-blue hover:bg-blue/10"
+                    title={t("ous:btn_edit")}
+                  >
+                    <Pencil size={13} /> {t("ous:btn_edit")}
+                  </button>
+                ) : null
+              }
+            >
+              {editMode ? (
+                <form onSubmit={handleSaveEdit} className="space-y-3 p-4">
+                  <Field label={t("ous:label_description")}>
+                    <input
+                      className="input"
+                      value={editForm.description}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, description: e.target.value })
+                      }
+                      placeholder={t("ous:ph_description")}
+                      autoComplete="off"
+                    />
+                  </Field>
+                  <Field label={t("ous:label_managed_by_form")}>
+                    <input
+                      className="input font-mono"
+                      value={editForm.managed_by}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, managed_by: e.target.value })
+                      }
+                      placeholder={t("ous:ph_parent_dn")}
+                      autoComplete="off"
+                    />
+                  </Field>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={cancelEdit}
+                      className="btn-outline"
+                    >
+                      {t("ous:btn_cancel_edit")}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={editSaving}
+                      className="btn-primary disabled:opacity-50"
+                    >
+                      {editSaving ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : null}
+                      {t("ous:btn_save_edit")}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <InfoRow
+                    icon={FolderTree}
+                    label={t("ous:label_name")}
+                    value={selectedOU.name}
+                  />
+                  <InfoRow
+                    icon={Info}
+                    label={t("ous:label_description")}
+                    value={selectedOU.description}
+                  />
+                  <InfoRow
+                    icon={Users}
+                    label={t("ous:label_managed_by")}
+                    value={selectedOU.managed_by}
+                    mono
+                  />
+                  <InfoRow
+                    icon={Network}
+                    label={t("ous:label_dn")}
+                    value={selectedOU.dn}
+                    mono
+                  />
+                </>
+              )}
             </DetailSection>
 
             {/* GPO Links */}
@@ -627,16 +773,21 @@ function InfoRow({
 
 function DetailSection({
   title,
+  action,
   children,
 }: {
   title: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
-        {title}
-      </h4>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">
+          {title}
+        </h4>
+        {action}
+      </div>
       <div className="overflow-hidden rounded-lg border border-border-subtle">
         {children}
       </div>

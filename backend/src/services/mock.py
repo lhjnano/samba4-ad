@@ -731,6 +731,16 @@ class MockDirectory:
             **self._computer_summary(c).model_dump(), dn=dn, object_sid=c["object_sid"]
         )
 
+    def update_computer(self, item_id: str, **fields: object) -> ComputerDetail:
+        dn = self._resolve(item_id)
+        if dn not in self.computers:
+            raise EntryNotFoundError(f"Computer not found: {dn}")
+        c = self.computers[dn]
+        for k, v in fields.items():
+            if v is not None and k in c:
+                c[k] = v
+        return self.get_computer(dn)
+
     def set_computer_status(self, item_id: str, status: str) -> ComputerDetail:
         dn = self._resolve(item_id)
         if dn not in self.computers:

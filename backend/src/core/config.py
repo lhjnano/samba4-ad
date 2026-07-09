@@ -94,6 +94,14 @@ class Settings(BaseSettings):
     kerberos_keytab: str = "/etc/krb5.keytab"
     kerberos_spn: str = ""
 
+    # --- OIDC Provider (IAM-7) ---
+    # Public issuer URL advertised in the discovery document. MUST be set in
+    # production via the ``OIDC_ISSUER`` env var (e.g.
+    # ``http://192.168.39.1:8000`` or ``https://idp.corp.local``). When empty,
+    # the issuer is derived from the incoming request host. The signing key is
+    # symmetric (HS256); see ``src/api/oidc.py`` for the JWKS implications.
+    oidc_issuer: str = ""
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_cors(cls, v: object) -> object:

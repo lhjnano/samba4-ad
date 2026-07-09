@@ -44,12 +44,93 @@ LDAP_BIND_PASSWORD=YourPassword
 LDAP_SEARCH_BASE=DC=CORP,DC=LOCAL
 ```
 
-### Future Authentication Phases
+### Authentication Features
 
 | Phase | Feature | Status |
 |-------|---------|--------|
-| IAM-4 | MFA (TOTP via Google Authenticator) | Planned |
-| IAM-5 | Kerberos SSO (SPNEGO) | Planned |
+| IAM-4 | MFA (TOTP via Google Authenticator) | ✅ Implemented |
+| IAM-5 | Kerberos SSO (SPNEGO) | ✅ Implemented |
+| IAM-7 | OIDC Provider (SSO for external apps) | ✅ Implemented |
+
+### MFA (Multi-Factor Authentication)
+
+TOTP-based second factor using Google Authenticator / Authy / FreeOTP.
+
+**Flow**:
+1. User enrolls via `POST /api/v1/setup/mfa` → returns secret + QR code
+2. User verifies with `POST /api/v1/setup/mfa/verify` → enables MFA
+3. On next login, `POST /api/v1/auth/login` returns `mfa_required: true` + temp token
+4. User submits TOTP code via `POST /api/v1/auth/mfa-verify` → receives full JWT
+
+**Global settings** (admin-configurable via `GET/PATCH /api/v1/settings/mfa`):
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `mfa_enabled` | `true` | MFA feature available (read-only) |
+| `mfa_required` | `false` | If true, all users must complete MFA at login |
+
+**Endpoints**:
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/v1/auth/mfa-verify` | POST | temp token | Verify TOTP code, receive full JWT |
+| `/api/v1/setup/mfa` | POST | JWT | Start MFA enrollment (returns secret + QR) |
+| `/api/v1/setup/mfa/verify` | POST | JWT | Verify enrollment code |
+| `/api/v1/setup/mfa/unenroll` | POST | JWT | Remove MFA |
+| `/api/v1/settings/mfa` | GET | JWT | View MFA global settings |
+| `/api/v1/settings/mfa` | PATCH | JWT | Update `mfa_required` |
+
+**Storage**: TOTP secrets stored in `/var/log/samba-ad-manager/mfa_secrets.json` (base32-encoded).
+
+### Kerberos SSO (SPNEGO)
+
+Browser-based single sign-on using Kerberos SPNEGO negotiation.
+
+**Flow**:
+1. User clicks "Sign in with SSO" on the login page
+2. Browser sends `GET /api/v1/auth/kerberos-init` with `Authorization: Negotiate <kerberos-token>`
+3. Server validates the Kerberos ticket via GSSAPI, issues JWT
+4. Frontend stores JWT and redirects to dashboard
+
+**Setup**: Run `scripts/setup-kerberos-keytab.sh` on the AD DC server to:
+- Register HTTP SPN (`HTTP/fqdn@REALM`)
+- Export keytab to `/etc/krb5.keytab`
+- Configure `KRB5_KTNAME` environment variable
+- Install `gssapi` Python package
+- Restart the service
+
+**Endpoint**:
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/v1/auth/kerberos-init` | GET | Kerberos ticket | Initiate SSO, returns JWT |
+
+### OIDC Provider
+
+External applications can use Samba AD Manager as an OpenID Connect Identity
+Provider. Implements OIDC Discovery, Authorization Code flow, and UserInfo.
+
+**Endpoints**:
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/.well-known/openid-configuration` | GET | Public | OIDC Discovery document |
+| `/api/v1/oidc/authorize` | GET | JWT | Authorization endpoint |
+| `/api/v1/oidc/token` | POST | Public | Token exchange (client_secret required) |
+| `/api/v1/oidc/userinfo` | GET | JWT | Standard OIDC claims (sub, email, name, groups) |
+| `/api/v1/oidc/jwks` | GET | Public | JWKS endpoint |
+| `/api/v1/oidc/clients` | POST | JWT | Register OIDC client |
+| `/api/v1/oidc/clients` | GET | JWT | List registered clients |
+
+**Configuration**:
+
+```ini
+# Set to the public-facing URL that external clients will use.
+# If empty, the issuer is derived from the incoming request host.
+OIDC_ISSUER=http://192.168.39.1:8000
+```
+
+**Client storage**: `oidc_clients.json` alongside the audit log path.
 
 ---
 
@@ -213,6 +294,11 @@ Response:
 | GPO created/deleted | `gpos:Create` / `gpos:Delete` | info / warning |
 | Policy changed | `policies:Update` | critical |
 | Domain provisioned | `setup:Provision` | critical |
+| Service stopped/restarted | `services:Stop` / `services:Restart` | critical |
+| Service started/reloaded | `services:Start` / `services:Reload` | warning |
+| Backup created/restored | `backup:Create` / `backup:Restore` | critical |
+| Backup deleted | `backup:Delete` | warning |
+| MFA settings changed | `settings:UpdateMfa` | warning |
 
 Read operations (GET) are **not** audited to reduce noise.
 
@@ -312,6 +398,9 @@ PBAC_DEFAULT_POLICY=system/viewer.json
 # Audit (always-on)
 AUDIT_LOG_PATH=/var/log/samba-ad-manager/audit.log
 AUDIT_RETENTION_DAYS=90
+
+# OIDC Provider
+OIDC_ISSUER=https://your-domain:8000
 ```
 
 ---
@@ -332,13 +421,17 @@ AUDIT_RETENTION_DAYS=90
 
 | File | Description |
 |------|-------------|
-| `backend/src/core/auth.py` | JWT authentication, `verify_credentials()` |
+| `backend/src/core/auth.py` | JWT authentication, `verify_credentials()`, `get_jwt_secret()` |
 | `backend/src/core/pbac.py` | Policy engine (`PolicyEngine`, wildcard matching) |
-| `backend/src/core/pbac_middleware.py` | HTTP middleware for PBAC enforcement |
 | `backend/src/core/audit.py` | Audit logger (file persistence, retention) |
-| `backend/src/core/audit_middleware.py` | HTTP middleware for audit logging |
-| `backend/src/core/config.py` | IAM-related settings |
-| `backend/src/api/auth.py` | Login/refresh endpoints with audit |
-| `backend/src/api/iam.py` | IAM API (policy list, evaluation) |
+| `backend/src/core/config.py` | IAM-related settings (MFA, OIDC, PBAC, audit) |
+| `backend/src/api/auth.py` | Login/refresh/mfa-verify/kerberos-init endpoints |
+| `backend/src/api/iam.py` | IAM API (policy list, evaluation, access intelligence) |
+| `backend/src/api/oidc.py` | OIDC Provider (discovery, authorize, token, userinfo, jwks) |
+| `backend/src/api/settings.py` | MFA global settings, connection info endpoints |
+| `backend/src/api/services.py` | Service management (systemctl wrapper, 6 samba services) |
+| `backend/src/api/backup.py` | Backup/Restore (tar-based, full/config types) |
 | `backend/src/api/logs.py` | Logs + audit query endpoints |
+| `backend/src/services/mock.py` | Mock directory backend (all CRUD including update_computer) |
+| `scripts/setup-kerberos-keytab.sh` | Kerberos keytab setup script |
 | `policies/system/` | Built-in policy templates |

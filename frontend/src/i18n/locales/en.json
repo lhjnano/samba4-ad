@@ -278,7 +278,13 @@
     "toast_member_added": "Member added",
     "toast_member_add_failed": "Failed to add member",
     "toast_member_removed": "Member removed",
-    "toast_member_remove_failed": "Failed to remove member"
+    "toast_member_remove_failed": "Failed to remove member",
+    "btn_edit": "Edit",
+    "btn_save_edit": "Save",
+    "btn_cancel_edit": "Cancel",
+    "toast_edit_success": "Group updated",
+    "toast_edit_failed": "Failed to update group",
+    "label_managed_by_form": "Managed By (DN)"
   },
   "computers": {
     "title": "Computer Management",
@@ -329,7 +335,13 @@
     "toast_reset_done": "Computer account reset",
     "toast_reset_failed": "Failed to reset account",
     "toast_removed": "Computer removed from domain",
-    "toast_remove_failed": "Failed to remove computer"
+    "toast_remove_failed": "Failed to remove computer",
+    "btn_edit": "Edit",
+    "btn_save_edit": "Save",
+    "btn_cancel_edit": "Cancel",
+    "toast_edit_success": "Computer updated",
+    "toast_edit_failed": "Failed to update computer",
+    "label_description_form": "Description"
   },
   "ous": {
     "title": "Organizational Unit Management",
@@ -377,7 +389,15 @@
     "toast_ou_deleted": "OU has been deleted",
     "toast_delete_failed": "Failed to delete",
     "toast_ou_created": "OU has been created",
-    "toast_ou_create_failed": "Failed to create OU"
+    "toast_ou_create_failed": "Failed to create OU",
+    "error_load_detail": "Failed to load OU information",
+    "label_managed_by": "Managed By",
+    "btn_edit": "Edit",
+    "btn_save_edit": "Save",
+    "btn_cancel_edit": "Cancel",
+    "toast_edit_success": "OU updated",
+    "toast_edit_failed": "Failed to update OU",
+    "label_managed_by_form": "Managed By (DN)"
   },
   "gpos": {
     "title": "Group Policy Management",
@@ -672,7 +692,19 @@
     "mfa_disable_failed": "Failed to disable 2FA",
     "mfa_global_settings": "MFA Global Settings",
     "mfa_global_enabled": "Enable MFA for all users",
-    "mfa_global_required": "Require MFA (force enrollment on next login)"
+    "mfa_global_required": "Require MFA (force enrollment on next login)",
+    "mfa_global_sub": "Global multi-factor authentication policy",
+    "mfa_global_enabled_label": "MFA Feature",
+    "mfa_global_required_label": "Require MFA",
+    "mfa_global_enabled_hint": "MFA is available for self-service enrollment",
+    "mfa_global_required_hint": "All users must complete MFA on next login",
+    "mfa_global_update_success": "MFA policy updated",
+    "mfa_global_update_failed": "Failed to update MFA policy"
+  },
+  "login": {
+    "sso_button": "Sign in with SSO",
+    "sso_failed": "SSO authentication failed",
+    "sso_not_configured": "SSO is not configured on this server"
   },
   "api": {
     "error_request_failed": "Request failed",
@@ -823,6 +855,16 @@
     "idle_permissions": "Idle Permissions (consider revoking)",
     "denied_attempts": "Denied Attempts",
     "active_permissions": "Active Permissions",
-    "never_used": "Never used"
+    "never_used": "Never used",
+    "usage_total": "Total Permissions",
+    "usage_active": "Active",
+    "usage_idle": "Idle",
+    "usage_denied": "Denied Attempts",
+    "usage_rate": "Usage Rate",
+    "usage_active_perms": "Active Permissions",
+    "usage_idle_perms": "Idle Permissions",
+    "usage_denied_attempts": "Denied Access Attempts",
+    "usage_no_data": "No usage data available",
+    "usage_count": "{{count}} uses"
   }
 }

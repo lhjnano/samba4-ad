@@ -40,6 +40,21 @@ _TOKEN_TTL = 8 * 3600  # 8 hours
 # Bearer scheme — ``auto_error=False`` so we can customise 401 messages.
 _bearer = HTTPBearer(auto_error=False)
 
+
+def get_jwt_secret() -> str:
+    """Return the HMAC signing secret used for JWTs.
+
+    Exposed so the OIDC provider can sign ID tokens with the same key the
+    rest of the application uses (see ``src/api/oidc.py``).
+    """
+    return _JWT_SECRET
+
+
+def get_jwt_algorithm() -> str:
+    """Return the JWT signing algorithm (currently ``HS256``)."""
+    return _JWT_ALGORITHM
+
+
 # ── Mock user store (mock mode only) ──────────────────────────────────
 
 _MOCK_USERS: dict[str, dict[str, Any]] = {

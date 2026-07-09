@@ -278,7 +278,13 @@
     "toast_member_added": "멤버가 추가되었습니다",
     "toast_member_add_failed": "멤버 추가에 실패했습니다",
     "toast_member_removed": "멤버가 제거되었습니다",
-    "toast_member_remove_failed": "멤버 제거에 실패했습니다"
+    "toast_member_remove_failed": "멤버 제거에 실패했습니다",
+    "btn_edit": "편집",
+    "btn_save_edit": "저장",
+    "btn_cancel_edit": "취소",
+    "toast_edit_success": "그룹이 업데이트되었습니다",
+    "toast_edit_failed": "그룹 업데이트에 실패했습니다",
+    "label_managed_by_form": "관리자 (DN)"
   },
   "computers": {
     "title": "컴퓨터 관리",
@@ -329,7 +335,13 @@
     "toast_reset_done": "컴퓨터 계정이 재설정되었습니다",
     "toast_reset_failed": "계정 재설정에 실패했습니다",
     "toast_removed": "도메인에서 제거되었습니다",
-    "toast_remove_failed": "제거에 실패했습니다"
+    "toast_remove_failed": "제거에 실패했습니다",
+    "btn_edit": "편집",
+    "btn_save_edit": "저장",
+    "btn_cancel_edit": "취소",
+    "toast_edit_success": "컴퓨터 정보가 업데이트되었습니다",
+    "toast_edit_failed": "컴퓨터 업데이트에 실패했습니다",
+    "label_description_form": "설명"
   },
   "ous": {
     "title": "OU 관리",
@@ -377,7 +389,15 @@
     "toast_ou_deleted": "OU가 삭제되었습니다",
     "toast_delete_failed": "삭제에 실패했습니다",
     "toast_ou_created": "OU가 생성되었습니다",
-    "toast_ou_create_failed": "OU 생성에 실패했습니다"
+    "toast_ou_create_failed": "OU 생성에 실패했습니다",
+    "error_load_detail": "OU 정보를 불러오지 못했습니다",
+    "label_managed_by": "관리자",
+    "btn_edit": "편집",
+    "btn_save_edit": "저장",
+    "btn_cancel_edit": "취소",
+    "toast_edit_success": "OU가 업데이트되었습니다",
+    "toast_edit_failed": "OU 업데이트에 실패했습니다",
+    "label_managed_by_form": "관리자 (DN)"
   },
   "gpos": {
     "title": "그룹 정책 관리",
@@ -672,7 +692,19 @@
     "mfa_disable_failed": "2FA 비활성화에 실패했습니다",
     "mfa_global_settings": "MFA 전역 설정",
     "mfa_global_enabled": "모든 사용자에 대해 MFA 활성화",
-    "mfa_global_required": "MFA 필수 (다음 로그인 시 등록 강제)"
+    "mfa_global_required": "MFA 필수 (다음 로그인 시 등록 강제)",
+    "mfa_global_sub": "전역 다중 인증 정책",
+    "mfa_global_enabled_label": "MFA 기능",
+    "mfa_global_required_label": "MFA 필수",
+    "mfa_global_enabled_hint": "MFA 셀프 서비스 등록을 사용할 수 있습니다",
+    "mfa_global_required_hint": "모든 사용자가 다음 로그인 시 MFA를 완료해야 합니다",
+    "mfa_global_update_success": "MFA 정책이 업데이트되었습니다",
+    "mfa_global_update_failed": "MFA 정책 업데이트에 실패했습니다"
+  },
+  "login": {
+    "sso_button": "SSO로 로그인",
+    "sso_failed": "SSO 인증에 실패했습니다",
+    "sso_not_configured": "이 서버에 SSO가 구성되어 있지 않습니다"
   },
   "api": {
     "error_request_failed": "요청 실패",
@@ -823,6 +855,16 @@
     "idle_permissions": "유휴 권한 (회수 검토)",
     "denied_attempts": "거부된 시도",
     "active_permissions": "활성 권한",
-    "never_used": "사용한 적 없음"
+    "never_used": "사용한 적 없음",
+    "usage_total": "전체 권한",
+    "usage_active": "활성",
+    "usage_idle": "유휴",
+    "usage_denied": "거부 시도",
+    "usage_rate": "사용률",
+    "usage_active_perms": "활성 권한",
+    "usage_idle_perms": "유휴 권한",
+    "usage_denied_attempts": "거부된 액세스 시도",
+    "usage_no_data": "사용량 데이터가 없습니다",
+    "usage_count": "{{count}}회 사용"
   }
 }

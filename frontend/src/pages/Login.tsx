@@ -6,6 +6,7 @@ import {
   AlertCircle,
   Lock,
   ArrowLeft,
+  Fingerprint,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
@@ -37,6 +38,7 @@ export function Login() {
   const [otpCode, setOtpCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [ssoLoading, setSsoLoading] = useState(false);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -96,6 +98,30 @@ export function Login() {
     setPhase("credentials");
     setOtpCode("");
     setError("");
+  }
+
+  async function handleSSO() {
+    setSsoLoading(true);
+    setError("");
+    try {
+      const resp = await fetch("/api/v1/auth/kerberos-init", {
+        credentials: "include",
+        headers: { "X-SSO": "negotiate" },
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.access_token) {
+          localStorage.setItem("ad_manager_token", data.access_token);
+          window.location.href = "/";
+        }
+      } else {
+        setError(t("login:sso_failed"));
+      }
+    } catch {
+      setError(t("login:sso_not_configured"));
+    } finally {
+      setSsoLoading(false);
+    }
   }
 
   return (
@@ -177,6 +203,29 @@ export function Login() {
               ) : (
                 t("common:login_btn")
               )}
+            </button>
+
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border-subtle" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-card px-2 text-muted">OR</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSSO}
+              disabled={ssoLoading}
+              className="btn-outline w-full justify-center disabled:opacity-50"
+            >
+              {ssoLoading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Fingerprint size={16} />
+              )}
+              {t("login:sso_button")}
             </button>
           </form>
         )}

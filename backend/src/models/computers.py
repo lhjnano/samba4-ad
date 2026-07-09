@@ -44,6 +44,13 @@ class ComputerDetail(ComputerSummary):
     object_sid: str | None = None
 
 
+class ComputerUpdate(BaseModel):
+    """PATCH /api/v1/computers/{id} body."""
+
+    description: str | None = None
+    location: str | None = None
+
+
 class ComputerStats(BaseModel):
     """Aggregate counts for the domain-join header."""
 

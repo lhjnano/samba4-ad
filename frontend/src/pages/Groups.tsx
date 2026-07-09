@@ -16,6 +16,7 @@ import {
   X,
   Info,
   Layers,
+  Pencil,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { api } from "@/api/client";
@@ -120,6 +121,11 @@ export function Groups() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [addMemberDn, setAddMemberDn] = useState("");
 
+  // Inline edit
+  const [editMode, setEditMode] = useState(false);
+  const [editForm, setEditForm] = useState({ description: "", managed_by: "" });
+  const [editSaving, setEditSaving] = useState(false);
+
   // Create drawer
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState<CreateForm>(EMPTY_FORM);
@@ -181,6 +187,7 @@ export function Groups() {
     setDetailOpen(true);
     setDetailError(null);
     setShowDeleteConfirm(false);
+    setEditMode(false);
     setDetailLoading(true);
     try {
       const { data } = await api.get<GroupDetail>(
@@ -202,6 +209,48 @@ export function Groups() {
     setSelectedGroup(null);
     setDetailError(null);
     setShowDeleteConfirm(false);
+    setEditMode(false);
+  }
+
+  // ── Inline edit ─────────────────────────────────
+  function startEdit() {
+    setEditForm({
+      description: selectedGroup?.description ?? "",
+      managed_by: selectedGroup?.managed_by ?? "",
+    });
+    setEditMode(true);
+  }
+
+  function cancelEdit() {
+    setEditMode(false);
+  }
+
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedGroup) return;
+    setEditSaving(true);
+    try {
+      await api.patch(`${API_BASE}/groups/${selectedGroup.id}`, {
+        description: editForm.description.trim(),
+        managed_by: editForm.managed_by.trim(),
+      });
+      const { data } = await api.get<GroupDetail>(
+        `${API_BASE}/groups/${selectedGroup.id}`,
+      );
+      setSelectedGroup(data);
+      setEditMode(false);
+      setToast({ type: "success", message: t("groups:toast_edit_success") });
+      fetchGroups();
+    } catch (err) {
+      setToast({
+        type: "error",
+        message:
+          (err as { message?: string })?.message ??
+          t("groups:toast_edit_failed"),
+      });
+    } finally {
+      setEditSaving(false);
+    }
   }
 
   // ── Delete ───────────────────────────────────────
@@ -488,34 +537,96 @@ export function Groups() {
             </div>
 
             {/* Basic info */}
-            <DetailSection title={t("groups:section_basic_info")}>
-              <InfoRow
-                icon={Layers}
-                label={t("groups:label_group_name")}
-                value={selectedGroup.name}
-                mono
-              />
-              <InfoRow
-                icon={Info}
-                label={t("groups:label_description")}
-                value={selectedGroup.description}
-              />
-              <InfoRow
-                icon={ShieldAlert}
-                label={t("groups:label_type")}
-                value={groupTypeLabel(selectedGroup.category, t)}
-              />
-              <InfoRow
-                icon={Layers}
-                label={t("groups:label_scope")}
-                value={scopeLabel(selectedGroup.scope, t)}
-              />
-              <InfoRow
-                icon={Users}
-                label={t("groups:label_managed_by")}
-                value={selectedGroup.managed_by}
-                mono
-              />
+            <DetailSection
+              title={t("groups:section_basic_info")}
+              action={
+                !editMode ? (
+                  <button
+                    type="button"
+                    onClick={startEdit}
+                    className="flex items-center gap-1 rounded px-2 py-1 text-xs text-blue hover:bg-blue/10"
+                    title={t("groups:btn_edit")}
+                  >
+                    <Pencil size={13} /> {t("groups:btn_edit")}
+                  </button>
+                ) : null
+              }
+            >
+              {editMode ? (
+                <form onSubmit={handleSaveEdit} className="space-y-3 p-4">
+                  <Field label={t("groups:label_description")}>
+                    <input
+                      className="input"
+                      value={editForm.description}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, description: e.target.value })
+                      }
+                      placeholder={t("groups:ph_description")}
+                      autoComplete="off"
+                    />
+                  </Field>
+                  <Field label={t("groups:label_managed_by_form")}>
+                    <input
+                      className="input font-mono"
+                      value={editForm.managed_by}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, managed_by: e.target.value })
+                      }
+                      placeholder={t("groups:ph_member_dn")}
+                      autoComplete="off"
+                    />
+                  </Field>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={cancelEdit}
+                      className="btn-outline"
+                    >
+                      {t("groups:btn_cancel_edit")}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={editSaving}
+                      className="btn-primary disabled:opacity-50"
+                    >
+                      {editSaving ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : null}
+                      {t("groups:btn_save_edit")}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <InfoRow
+                    icon={Layers}
+                    label={t("groups:label_group_name")}
+                    value={selectedGroup.name}
+                    mono
+                  />
+                  <InfoRow
+                    icon={Info}
+                    label={t("groups:label_description")}
+                    value={selectedGroup.description}
+                  />
+                  <InfoRow
+                    icon={ShieldAlert}
+                    label={t("groups:label_type")}
+                    value={groupTypeLabel(selectedGroup.category, t)}
+                  />
+                  <InfoRow
+                    icon={Layers}
+                    label={t("groups:label_scope")}
+                    value={scopeLabel(selectedGroup.scope, t)}
+                  />
+                  <InfoRow
+                    icon={Users}
+                    label={t("groups:label_managed_by")}
+                    value={selectedGroup.managed_by}
+                    mono
+                  />
+                </>
+              )}
             </DetailSection>
 
             {/* Members */}
@@ -844,16 +955,21 @@ function InfoRow({
 
 function DetailSection({
   title,
+  action,
   children,
 }: {
   title: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
-        {title}
-      </h4>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">
+          {title}
+        </h4>
+        {action}
+      </div>
       <div className="overflow-hidden rounded-lg border border-border-subtle">
         {children}
       </div>

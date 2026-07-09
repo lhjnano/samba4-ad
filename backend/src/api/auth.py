@@ -194,6 +194,56 @@ def _issue_token(username: str, user: dict, client_ip: str) -> LoginOrMfaRespons
     )
 
 
+# ── Kerberos SSO ─────────────────────────────────────────────────────
+
+
+@router.get(
+    "/kerberos-init",
+    response_model=LoginOrMfaResponse,
+    summary="Initiate Kerberos SSO",
+)
+async def kerberos_init(request: Request) -> LoginOrMfaResponse:
+    """Kerberos SSO endpoint.
+
+    If the AuthMiddleware has already authenticated the user via Negotiate
+    (SPNEGO), this endpoint issues a JWT. Otherwise returns 401 with
+    ``WWW-Authenticate: Negotiate`` to trigger the browser's SPNEGO flow.
+    """
+    user_info = getattr(request.state, "user", None)
+    if not user_info:
+        raise HTTPException(401, "Kerberos authentication required")
+
+    client_ip = request.client.host if request.client else ""
+    get_audit().log(
+        actor=user_info["username"],
+        action="auth:KerberosLogin",
+        actor_ip=client_ip,
+        decision="ALLOW",
+        severity="info",
+        detail="Kerberos SSO authentication",
+    )
+
+    token = create_access_token(
+        {
+            "sub": user_info["username"],
+            "display_name": user_info["username"],
+            "role": user_info.get("role", "admin"),
+            "groups": user_info.get("groups", []),
+            "kerberos": True,
+        }
+    )
+    return LoginOrMfaResponse(
+        access_token=token,
+        expires_in=8 * 3600,
+        user=UserInfo(
+            username=user_info["username"],
+            display_name=user_info["username"],
+            role=user_info.get("role", "admin"),
+            groups=user_info.get("groups", []),
+        ),
+    )
+
+
 # ── MFA enrollment ───────────────────────────────────────────────────
 
 

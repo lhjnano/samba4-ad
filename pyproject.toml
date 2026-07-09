@@ -110,6 +110,7 @@ files = ["backend/src"]
 module = [
     "ldap3.*",
     "ldaptree.*",
+    "authlib.*",
 ]
 ignore_missing_imports = true
 
@@ -146,6 +147,11 @@ filterwarnings = [
     "ignore::PendingDeprecationWarning",
     "ignore::starlette.exceptions.StarletteDeprecationWarning",
     "ignore:Using `httpx` with `starlette.testclient`",
+    # authlib.jose is intentionally used for OIDC ID-token signing (IAM-7);
+    # the submodule is deprecated in favour of ``joserfc`` (authlib's
+    # successor, installed as its dependency) but remains supported until
+    # authlib 2.0.
+    "ignore:authlib.jose module is deprecated:authlib.deprecate.AuthlibDeprecationWarning",
 ]
 
 # ============================================
@@ -171,6 +177,8 @@ omit = [
     "*/kerberos.py",
     "*/self_service.py",
     "*/search.py",
+    "*/services.py",
+    "*/backup.py",
 ]
 parallel = true
 

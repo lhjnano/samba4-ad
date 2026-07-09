@@ -10,6 +10,7 @@ from fastapi import APIRouter
 from src.api import (
     alerts,
     auth,
+    backup,
     computers,
     dashboard,
     dns,
@@ -19,10 +20,12 @@ from src.api import (
     health,
     iam,
     logs,
+    oidc,
     ou,
     policies,
     search,
     self_service,
+    services,
     settings,
     setup,
     stats,
@@ -31,6 +34,7 @@ from src.api import (
 
 api_router = APIRouter()
 api_router.include_router(auth.router)
+api_router.include_router(backup.router)
 api_router.include_router(setup.router)
 api_router.include_router(users.router)
 api_router.include_router(groups.router)
@@ -49,3 +53,5 @@ api_router.include_router(policies.router)
 api_router.include_router(iam.router)
 api_router.include_router(self_service.router)
 api_router.include_router(search.router)
+api_router.include_router(services.router)
+api_router.include_router(oidc.router)

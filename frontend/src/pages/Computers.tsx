@@ -13,6 +13,7 @@ import {
   Clock,
   Network,
   Info,
+  Pencil,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { api } from "@/api/client";
@@ -121,6 +122,11 @@ export function Computers() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Inline edit
+  const [editMode, setEditMode] = useState(false);
+  const [editForm, setEditForm] = useState({ description: "" });
+  const [editSaving, setEditSaving] = useState(false);
+
   // Toast
   const [toast, setToast] = useState<Toast>(null);
 
@@ -190,6 +196,7 @@ export function Computers() {
     setSelectedComputer(computer);
     setDetailOpen(true);
     setDetailError(null);
+    setEditMode(false);
     setDetailLoading(true);
     try {
       const { data } = await api.get<ComputerDetail>(
@@ -211,6 +218,46 @@ export function Computers() {
     setSelectedComputer(null);
     setDetailError(null);
     setShowDeleteConfirm(false);
+    setEditMode(false);
+  }
+
+  // ── Inline edit ─────────────────────────────────
+  function startEdit() {
+    setEditForm({
+      description: selectedComputer?.description ?? "",
+    });
+    setEditMode(true);
+  }
+
+  function cancelEdit() {
+    setEditMode(false);
+  }
+
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedComputer) return;
+    setEditSaving(true);
+    try {
+      await api.patch(`${API_BASE}/computers/${selectedComputer.id}`, {
+        description: editForm.description.trim(),
+      });
+      const { data } = await api.get<ComputerDetail>(
+        `${API_BASE}/computers/${selectedComputer.id}`,
+      );
+      setSelectedComputer(data);
+      setEditMode(false);
+      setToast({ type: "success", message: t("computers:toast_edit_success") });
+      fetchComputers();
+    } catch (err) {
+      setToast({
+        type: "error",
+        message:
+          (err as { message?: string })?.message ??
+          t("computers:toast_edit_failed"),
+      });
+    } finally {
+      setEditSaving(false);
+    }
   }
 
   // ── Actions ─────────────────────────────────────
@@ -472,36 +519,86 @@ export function Computers() {
             </div>
 
             {/* Basic info */}
-            <DetailSection title={t("computers:section_basic_info")}>
-              <InfoRow
-                icon={Monitor}
-                label={t("computers:label_hostname")}
-                value={selectedComputer.hostname}
-                mono
-              />
-              <InfoRow icon={Info} label={t("computers:label_os")} value={selectedComputer.operating_system} />
-              <InfoRow
-                icon={Network}
-                label={t("computers:label_ip_address")}
-                value={selectedComputer.ip_address}
-                mono
-              />
-              <InfoRow
-                icon={FolderTree}
-                label={t("computers:label_ou")}
-                value={selectedComputer.ou}
-                mono
-              />
-              <InfoRow
-                icon={Info}
-                label={t("computers:label_description")}
-                value={selectedComputer.description}
-              />
-              <InfoRow
-                icon={Clock}
-                label={t("computers:label_last_logon")}
-                value={formatDate(selectedComputer.last_logon)}
-              />
+            <DetailSection
+              title={t("computers:section_basic_info")}
+              action={
+                !editMode ? (
+                  <button
+                    type="button"
+                    onClick={startEdit}
+                    className="flex items-center gap-1 rounded px-2 py-1 text-xs text-blue hover:bg-blue/10"
+                    title={t("computers:btn_edit")}
+                  >
+                    <Pencil size={13} /> {t("computers:btn_edit")}
+                  </button>
+                ) : null
+              }
+            >
+              {editMode ? (
+                <form onSubmit={handleSaveEdit} className="space-y-3 p-4">
+                  <Field label={t("computers:label_description_form")}>
+                    <input
+                      className="input"
+                      value={editForm.description}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, description: e.target.value })
+                      }
+                      autoComplete="off"
+                    />
+                  </Field>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={cancelEdit}
+                      className="btn-outline"
+                    >
+                      {t("computers:btn_cancel_edit")}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={editSaving}
+                      className="btn-primary disabled:opacity-50"
+                    >
+                      {editSaving ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : null}
+                      {t("computers:btn_save_edit")}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <InfoRow
+                    icon={Monitor}
+                    label={t("computers:label_hostname")}
+                    value={selectedComputer.hostname}
+                    mono
+                  />
+                  <InfoRow icon={Info} label={t("computers:label_os")} value={selectedComputer.operating_system} />
+                  <InfoRow
+                    icon={Network}
+                    label={t("computers:label_ip_address")}
+                    value={selectedComputer.ip_address}
+                    mono
+                  />
+                  <InfoRow
+                    icon={FolderTree}
+                    label={t("computers:label_ou")}
+                    value={selectedComputer.ou}
+                    mono
+                  />
+                  <InfoRow
+                    icon={Info}
+                    label={t("computers:label_description")}
+                    value={selectedComputer.description}
+                  />
+                  <InfoRow
+                    icon={Clock}
+                    label={t("computers:label_last_logon")}
+                    value={formatDate(selectedComputer.last_logon)}
+                  />
+                </>
+              )}
             </DetailSection>
 
             {/* Management actions */}
@@ -583,6 +680,30 @@ export function Computers() {
 }
 
 // ── Sub-components ─────────────────────────────────
+function Field({
+  label,
+  error,
+  hint,
+  children,
+}: {
+  label: string;
+  error?: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label className="label">{label}</label>
+      {children}
+      {error ? (
+        <p className="mt-1 text-xs text-red">{error}</p>
+      ) : hint ? (
+        <p className="mt-1 text-xs text-muted">{hint}</p>
+      ) : null}
+    </div>
+  );
+}
+
 function InfoRow({
   icon: Icon,
   label,
@@ -615,16 +736,21 @@ function InfoRow({
 
 function DetailSection({
   title,
+  action,
   children,
 }: {
   title: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
-        {title}
-      </h4>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">
+          {title}
+        </h4>
+        {action}
+      </div>
       <div className="overflow-hidden rounded-lg border border-border-subtle">
         {children}
       </div>

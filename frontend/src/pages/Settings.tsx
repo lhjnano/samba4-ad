@@ -366,6 +366,11 @@ export function Settings() {
             onToast={(msg, type) => setToast({ type, message: msg })}
           />
 
+          {/* ── MFA Global Settings ─────────────────── */}
+          <MfaGlobalSettingsSection
+            onToast={(msg, type) => setToast({ type, message: msg })}
+          />
+
           {/* ── Backup / Restore ───────────────────── */}
           <SectionCard
             icon={ShieldCheck}
@@ -902,5 +907,131 @@ function MfaSection({
         )}
       </SectionCard>
     </>
+  );
+}
+
+// ── MFA Global Settings Section ────────────────────
+function MfaGlobalSettingsSection({
+  onToast,
+}: {
+  onToast: (msg: string, type: "success" | "error") => void;
+}) {
+  const { t } = useTranslation();
+  const [mfaEnabled, setMfaEnabled] = useState(false);
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const fetchStatus = useCallback(async () => {
+    try {
+      const { data } = await api.get<{ mfa_enabled: boolean; mfa_required: boolean }>(
+        `${API_BASE}/settings/mfa`,
+      );
+      setMfaEnabled(data.mfa_enabled);
+      setMfaRequired(data.mfa_required);
+    } catch {
+      // MFA global settings unavailable
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStatus();
+  }, [fetchStatus]);
+
+  async function handleToggle() {
+    const next = !mfaRequired;
+    setMfaRequired(next);
+    setSaving(true);
+    try {
+      const { data } = await api.patch<{ mfa_enabled: boolean; mfa_required: boolean }>(
+        `${API_BASE}/settings/mfa`,
+        { mfa_required: next },
+      );
+      setMfaEnabled(data.mfa_enabled);
+      setMfaRequired(data.mfa_required);
+      onToast(t("settings:mfa_global_update_success"), "success");
+    } catch {
+      setMfaRequired(!next);
+      onToast(t("settings:mfa_global_update_failed"), "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <SectionCard
+      icon={ShieldCheck}
+      iconTone="blue"
+      title={t("settings:mfa_global_settings")}
+      subtitle={t("settings:mfa_global_sub")}
+    >
+      {loading ? (
+        <div className="flex h-20 items-center justify-center">
+          <Loader2 size={20} className="animate-spin text-secondary" />
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {/* MFA Enabled (read-only display) */}
+          <div className="flex items-center justify-between border-t border-border-subtle pt-3">
+            <div className="min-w-0 pr-3">
+              <p className="text-sm font-medium text-primary">
+                {t("settings:mfa_global_enabled_label")}
+              </p>
+              <p className="mt-0.5 text-xs text-muted">
+                {t("settings:mfa_global_enabled_hint")}
+              </p>
+            </div>
+            <span
+              className={clsx(
+                "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium",
+                mfaEnabled
+                  ? "bg-green/15 text-green"
+                  : "bg-muted/15 text-muted",
+              )}
+            >
+              {mfaEnabled ? <CheckCircle2 size={10} /> : null}
+              {mfaEnabled
+                ? t("settings:mfa_enabled")
+                : t("settings:mfa_not_enabled")}
+            </span>
+          </div>
+
+          {/* MFA Required (editable toggle) */}
+          <div className="flex items-center justify-between border-t border-border-subtle pt-3">
+            <div className="min-w-0 pr-3">
+              <p className="text-sm font-medium text-primary">
+                {t("settings:mfa_global_required_label")}
+              </p>
+              <p className="mt-0.5 text-xs text-muted">
+                {t("settings:mfa_global_required_hint")}
+              </p>
+            </div>
+            <button
+              onClick={() => handleToggle()}
+              disabled={saving}
+              aria-label={t("settings:mfa_global_required_label")}
+              className={clsx(
+                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                mfaRequired ? "bg-green" : "bg-muted/30",
+                saving && "opacity-50",
+              )}
+            >
+              {saving ? (
+                <Loader2 size={12} className="absolute left-1/2 -translate-x-1/2 animate-spin text-white" />
+              ) : (
+                <span
+                  className={clsx(
+                    "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                    mfaRequired ? "translate-x-6" : "translate-x-1",
+                  )}
+                />
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+    </SectionCard>
   );
 }
