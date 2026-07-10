@@ -155,7 +155,9 @@ function DomainConnectionInfo() {
   const dcHost = info?.dc_hostname || "dom39-forest01.corp.local";
   const dcIp = info?.dc_ip || "192.168.39.1";
   const baseDn = `DC=${realm.toLowerCase().split(".").join(",DC=")}`;
-  const ldapUrl = `ldap://${dcIp}`;
+  // IPv6 literals require brackets in URLs (ldap://[2001:db8::1])
+  const hostInUrl = dcIp.includes(":") ? `[${dcIp}]` : dcIp;
+  const ldapUrl = `ldap://${hostInUrl}`;
   const kerberosRealm = realm.toUpperCase();
 
   return (

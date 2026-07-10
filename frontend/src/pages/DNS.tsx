@@ -505,9 +505,11 @@ export function DNS() {
                 ? t("dns:hint_value_mx")
                 : form.type === "A"
                   ? t("dns:hint_value_a")
-                  : form.type === "CNAME"
-                    ? t("dns:hint_value_cname")
-                    : undefined
+                  : form.type === "AAAA"
+                    ? t("dns:hint_value_aaaa")
+                    : form.type === "CNAME"
+                      ? t("dns:hint_value_cname")
+                      : undefined
             }
           >
             <input
@@ -517,9 +519,11 @@ export function DNS() {
               placeholder={
                 form.type === "A"
                   ? t("dns:ph_value_a")
-                  : form.type === "MX"
-                    ? t("dns:ph_value_mx")
-                    : t("dns:ph_value")
+                  : form.type === "AAAA"
+                    ? t("dns:ph_value_aaaa")
+                    : form.type === "MX"
+                      ? t("dns:ph_value_mx")
+                      : t("dns:ph_value")
               }
               autoComplete="off"
             />

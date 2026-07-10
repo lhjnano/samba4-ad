@@ -150,8 +150,11 @@ mkdir -p "$PROD_CONF_DIR"
 # Always (re)generate the production config so install.sh stays idempotent.
 info "Creating configuration at $PROD_CONF ..."
 
-# Get server IP
-SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "127.0.0.1")
+# Get server IP — prefer IPv4 (hostname -I order is not guaranteed; first
+# token may be an IPv6 address which breaks IPv4-only tooling)
+SERVER_IP=$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | head -1 || true)
+[ -z "$SERVER_IP" ] && SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+[ -z "$SERVER_IP" ] && SERVER_IP="127.0.0.1"
 
 # Generate system admin password if not provided
 if [ -z "$ADMIN_PASS" ]; then
@@ -226,7 +229,8 @@ User=$SERVICE_USER
 Group=$SERVICE_USER
 WorkingDirectory=$APP_DIR/backend
 EnvironmentFile=$PROD_CONF
-ExecStart=$VENV_DIR/bin/uvicorn src.main:app --host 0.0.0.0 --port 8000
+# Dual-stack bind (:: accepts both IPv6 and IPv4-mapped connections)
+ExecStart=$VENV_DIR/bin/uvicorn src.main:app --host :: --port 8000
 Restart=always
 RestartSec=5
 
@@ -311,7 +315,9 @@ fi
 # ---------------------------------------------------------------------------
 # Done
 # ---------------------------------------------------------------------------
-SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
+SERVER_IP=$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | head -1 || true)
+[ -z "$SERVER_IP" ] && SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+[ -z "$SERVER_IP" ] && SERVER_IP="localhost"
 
 echo ""
 echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"

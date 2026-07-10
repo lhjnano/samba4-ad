@@ -186,20 +186,35 @@ def _detect_public_ip() -> str:
     """Best-effort auto-detection of the server's primary IP address.
 
     Used when ``DC_IP`` is not explicitly configured. Resolves the
-    hostname to an IP via ``socket.getaddrinfo``. Falls back to an empty
-    string if detection fails (caller then falls back to ``ldap_host``).
+    hostname via ``socket.getaddrinfo`` and returns the first usable
+    address. Skips loopback (``127.0.0.0/8``, ``::1``), link-local
+    (``169.254.0.0/16``, ``fe80::/10``), and unspecified addresses.
+    Prefers a global IPv4 address; falls back to the first usable IPv6
+    address (zone IDs stripped). Returns an empty string if nothing is
+    found (caller then falls back to ``ldap_host``).
     """
+    import ipaddress
+
     try:
         hostname = socket.gethostname()
         addrs = socket.getaddrinfo(hostname, None)
-        for addr in addrs:
-            ip = addr[4][0]
-            # Skip loopback — we want a real interface IP
-            if not ip.startswith("127."):
-                return ip
     except OSError:
-        pass
-    return ""
+        return ""
+
+    ipv6_fallback = ""
+    for addr in addrs:
+        raw = addr[4][0].split("%")[0]  # strip zone id (e.g. fe80::1%eth0)
+        try:
+            ip = ipaddress.ip_address(raw)
+        except ValueError:
+            continue
+        if ip.is_loopback or ip.is_link_local or ip.is_unspecified:
+            continue
+        if ip.version == 4:
+            return str(ip)
+        if not ipv6_fallback:
+            ipv6_fallback = str(ip)
+    return ipv6_fallback
 
 
 class Ldap3Backend:

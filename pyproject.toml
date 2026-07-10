@@ -152,6 +152,9 @@ filterwarnings = [
     # successor, installed as its dependency) but remains supported until
     # authlib 2.0.
     "ignore:authlib.jose module is deprecated:authlib.deprecate.AuthlibDeprecationWarning",
+    # ldap3 2.9 imports pyasn1's deprecated tagMap/typeMap API at module
+    # import time (surfaces when tests import ldap3_backend directly).
+    "ignore:(tagMap|typeMap) is deprecated:DeprecationWarning",
 ]
 
 # ============================================
