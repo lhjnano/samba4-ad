@@ -208,6 +208,14 @@ EOF
 cp "$PROD_CONF" "$ENV_FILE"
 
 chmod 600 "$PROD_CONF"
+# The service reads this file as $SERVICE_USER (EnvironmentFile) — root-only
+# ownership causes PermissionError at startup.
+chown "$SERVICE_USER:$SERVICE_USER" "$PROD_CONF"
+
+# Audit/MFA log directory (AUDIT_LOG_PATH parent) — the app creates files
+# lazily but cannot mkdir under /var/log as a non-root user.
+mkdir -p /var/log/samba-ad-manager
+chown "$SERVICE_USER:$SERVICE_USER" /var/log/samba-ad-manager
 ok "Configuration created at $PROD_CONF"
 warn "Edit $PROD_CONF to match your domain after provisioning."
 
@@ -215,6 +223,19 @@ warn "Edit $PROD_CONF to match your domain after provisioning."
 # Step 5: Create systemd service
 # ---------------------------------------------------------------------------
 SERVICE_FILE="/etc/systemd/system/samba-ad-manager.service"
+
+# ProtectHome=yes blocks /home entirely — the service cannot exec its own
+# uvicorn binary when APP_DIR lives under /home (203/EXEC). Disable it (and
+# grant parent-directory traversal) for /home installs; keep it for /opt etc.
+PROTECT_HOME="ProtectHome=yes"
+case "$APP_DIR" in
+    /home/*)
+        PROTECT_HOME="# ProtectHome disabled — app resides under /home"
+        HOME_ROOT=$(echo "$APP_DIR" | cut -d/ -f1-3)
+        chmod o+x "$HOME_ROOT" 2>/dev/null || true
+        warn "APP_DIR is under /home: ProtectHome disabled, traversal granted on $HOME_ROOT"
+        ;;
+esac
 
 info "Creating systemd service..."
 
@@ -237,8 +258,7 @@ RestartSec=5
 
 # Security hardening
 NoNewPrivileges=yes
-ProtectSystem=full
-ProtectHome=yes
+$PROTECT_HOME
 PrivateTmp=yes
 ReadWritePaths=$APP_DIR /etc/samba /var/lib/samba /var/cache/samba /var/run/samba
 
