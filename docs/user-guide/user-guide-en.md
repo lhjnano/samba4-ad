@@ -49,7 +49,7 @@
 
 | Component | Minimum | Recommended |
 |-----------|---------|-------------|
-| OS | Ubuntu 22.04 LTS | Ubuntu 24.04 LTS+ |
+| OS | Ubuntu 24.04 LTS | Ubuntu 26.04 LTS+ |
 | CPU | 2 cores | 4+ cores |
 | RAM | 2 GB | 4+ GB |
 | Disk | 20 GB | 50+ GB |

@@ -90,6 +90,7 @@ case "$PKG_MANAGER" in
         export DEBIAN_FRONTEND=noninteractive
         apt-get update -qq
         apt-get install -y -qq samba smbclient winbind ldap-utils \
+            krb5-user dnsutils \
             python3 python3-venv python3-pip 2>/dev/null
         # Disable default smbd/nmbd to avoid conflict with samba-ad-dc
         systemctl stop smbd nmbd winbind 2>/dev/null || true

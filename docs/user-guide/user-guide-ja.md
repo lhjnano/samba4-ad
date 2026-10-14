@@ -49,7 +49,7 @@
 
 | 項目 | 最小 | 推奨 |
 |------|------|------|
-| OS | Ubuntu 22.04 LTS | Ubuntu 24.04 LTS以上 |
+| OS | Ubuntu 24.04 LTS | Ubuntu 26.04 LTS以上 |
 | CPU | 2コア | 4コア以上 |
 | メモリ | 2 GB | 4 GB以上 |
 | ディスク | 20 GB | 50 GB以上 |

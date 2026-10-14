@@ -1,7 +1,12 @@
 # Deployment & CI/CD
 
-> Ubuntu 22.04 VM-based Samba 4 AD DC + FastAPI + React deployment process.
+> Ubuntu 26.04 LTS VM-based Samba 4 AD DC + FastAPI + React deployment process.
 > All deployments must be **reproducible and rollbackable**.
+>
+> **Quick path**: for a fresh single-server install, run `install.sh` — it
+> provisions Samba AD DC, the systemd service (`samba-ad-manager`), and the
+> environment file in one pass. The sections below document the manual,
+> component-by-component procedure and the reference architecture.
 
 ---
 
@@ -11,7 +16,7 @@
 
 ```
 ┌─────────────────────────────────────────────────┐
-│                  Ubuntu 22.04 VM                  │
+│                Ubuntu 26.04 LTS VM                │
 │                                                   │
 │  ┌──────────────┐    ┌──────────────────────┐    │
 │  │  nginx :443  │───▶│  FastAPI :8000       │    │
@@ -40,8 +45,12 @@
 | CPU | 2 vCPU | 4 vCPU |
 | RAM | 4 GB | 8 GB |
 | Disk | 40 GB | 100 GB (SSD) |
-| OS | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
+| OS | Ubuntu 24.04 LTS | Ubuntu 26.04 LTS |
 | Network | Static IP, internal network | Static IP, internal network |
+
+> **RAM note**: 4 GB is sufficient for small domains (a few hundred objects).
+> Add 2–4 GB swap — the frontend build (`npm run build`) spikes ~1–2 GB, or
+> pre-build `dist/` off-box and rsync it.
 
 ### 1.3 Domain Configuration
 
@@ -57,6 +66,9 @@ api.example.lan  (optional)    # API-only subdomain
 ## 2. Samba 4 AD DC Provisioning
 
 ### 2.1 Initial Provisioning
+
+> `install.sh` performs all of this automatically. The manual steps follow
+> for reference and troubleshooting.
 
 ```bash
 # 1. System package update
@@ -142,11 +154,11 @@ sudo chown -R samba4-ad:samba4-ad /opt/samba4-ad /var/log/samba4-ad
 ### 3.2 Python Environment
 
 ```bash
-# Install Python 3.11
-sudo apt install -y python3.11 python3.11-venv python3-pip
+# Ubuntu 26.04 ships Python 3.14 by default
+sudo apt install -y python3 python3-venv python3-pip
 
 # Create virtual environment
-sudo -u samba4-ad python3.11 -m venv /opt/samba4-ad/backend/.venv
+sudo -u samba4-ad python3 -m venv /opt/samba4-ad/backend/.venv
 
 # Install dependencies
 cd /opt/samba4-ad/backend
